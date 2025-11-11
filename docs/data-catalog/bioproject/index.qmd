@@ -1,0 +1,58 @@
+---
+title: "BioProject Data"
+---
+
+## Overview
+
+BioProject data from NCBI, containing project-level metadata that groups related studies and samples.
+
+## Available Tables
+
+### bronze.stg_ncbi_bioproject
+
+NCBI BioProject data.
+
+**Key Columns**:
+- `accession` - BioProject accession
+- `title` - Project title
+- `description` - Project description
+- `organism` - Primary organism
+
+[View Schema →](../../schemas/bronze/stg-ncbi-bioproject.qmd)
+
+## Example Queries
+
+```python
+import duckdb
+
+conn = duckdb.connect('omicidx.duckdb')
+
+# Count projects by organism
+result = conn.execute("""
+    SELECT 
+        organism,
+        COUNT(*) as project_count
+    FROM bronze.stg_ncbi_bioproject
+    WHERE organism IS NOT NULL
+    GROUP BY organism
+    ORDER BY project_count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+[More Examples →](../../examples/common-queries.ipynb)
+
+## Access
+
+- **Remote Database**: Query via `bronze.stg_ncbi_bioproject`
+- **Parquet Files**: `https://store.yourdomain.com/data/bronze/stg_ncbi_bioproject.parquet`
+- **Catalog**: See `catalog.json` for complete file locations
+
+## Next Steps
+
+- [View Detailed Schemas](../../schemas/bronze/)
+- [Example Queries](../../examples/common-queries.ipynb)
+- [SRA Data](../sra/index.qmd)
+

@@ -1,0 +1,92 @@
+---
+title: "Architecture"
+---
+
+## Overview
+
+OmicIDX uses a modern data warehouse architecture with SQLMesh for transformations and DuckDB for querying.
+
+## Architecture Diagram
+
+```
+Source Databases (NCBI, EBI)
+        ↓
+ETL Pipelines (Python)
+        ↓
+Raw Data (Parquet/NDJSON)
+        ↓
+SQLMesh Transformations
+        ↓
+Staging Tables (Bronze)
+        ↓
+Analytics Tables (Marts)
+        ↓
+Frozen Data Lake (R2/S3)
+        ↓
+Remote DuckDB Database
+        ↓
+Users
+```
+
+## Components
+
+### ETL Pipelines
+
+Python-based extraction pipelines that:
+- Fetch data from source APIs/FTP
+- Transform to standardized formats
+- Store as parquet files
+
+### SQLMesh
+
+Data transformation engine that:
+- Defines incremental models
+- Manages data lineage
+- Handles schema evolution
+- Tracks data quality
+
+### Data Storage
+
+- **Format**: Parquet (columnar, compressed)
+- **Location**: Cloudflare R2 (or S3-compatible)
+- **Organization**: By schema and table
+
+### Remote Database
+
+Lightweight DuckDB file containing:
+- View definitions pointing to parquet files
+- Schema information
+- Metadata
+
+### Data Catalog
+
+JSON catalog containing:
+- Table schemas
+- File locations
+- Metadata
+- Update timestamps
+
+## Data Flow
+
+1. **Extraction**: ETL pipelines extract data from sources
+2. **Raw Storage**: Data stored as parquet/NDJSON files
+3. **Transformation**: SQLMesh models transform raw data
+4. **Staging**: Cleaned data in bronze schema
+5. **Analytics**: Optional marts for common queries
+6. **Deployment**: Data deployed to R2/S3
+7. **Catalog**: Catalog.json generated with metadata
+8. **Database**: Remote DuckDB created with views
+
+## Technology Stack
+
+- **ETL**: Python, pandas, polars
+- **Transformations**: SQLMesh, SQL
+- **Storage**: Parquet, DuckDB
+- **Deployment**: Cloudflare R2, S3
+- **Query Engine**: DuckDB
+
+## For More Details
+
+- [SQLMesh Documentation](../../sqlmesh/README.md) - Detailed technical documentation
+- [Data Sources](data-sources.qmd) - Source database information
+

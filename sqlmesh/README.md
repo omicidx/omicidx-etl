@@ -410,6 +410,38 @@ IO Error: No files found that match the pattern
    - Audit columns (`_loaded_at`, `_batch_id`)
    - Data quality dashboards
 
+## Data Catalog
+
+The data catalog provides comprehensive metadata about all tables, columns, dependencies, and statistics.
+
+### Generating the Catalog
+
+Generate the catalog JSON file:
+
+```bash
+# Using the CLI command
+uv run oidx catalog generate
+
+# Or directly
+cd sqlmesh
+python scripts/generate_catalog.py --output ../catalog-viewer/public/catalog.json
+```
+
+The catalog includes:
+- Table metadata (name, schema, kind, grain, cron)
+- Column schemas and types
+- Full DuckDB statistics (min, max, percentiles, null counts, distinct counts)
+- Dependency graph (which tables depend on which)
+- Row counts and size estimates
+
+### Catalog Schema
+
+The catalog JSON schema is documented in `sqlmesh/scripts/catalog_schema.json`.
+
+### Catalog Viewer
+
+A React-based visualization tool is available in `catalog-viewer/` for exploring the catalog interactively. See `catalog-viewer/README.md` for details.
+
 ## Resources
 
 - [SQLMesh Documentation](https://sqlmesh.readthedocs.io/)
@@ -424,4 +456,5 @@ When adding new models:
 2. Add comprehensive tests
 3. Document complex transformations
 4. Use consistent naming conventions
-5. Update this README with new models and patterns 
+5. Update this README with new models and patterns
+6. Regenerate the catalog after adding new models 

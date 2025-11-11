@@ -292,11 +292,10 @@ def ebi_biosample():
     pass
 
 @ebi_biosample.command()
-@click.option(
-    "--output-dir",
+@click.argument(
+    "output_dir",
     type=click.Path(),
     default=None,
-    help=f"Output directory for extracted data (default: {output_dir})",
 )
 def extract(output_dir: str):
     """Extract EBI Biosample data.

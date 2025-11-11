@@ -1,0 +1,97 @@
+---
+title: "Accessing the Data"
+---
+
+## Overview
+
+The OmicIDX data warehouse is available in two formats:
+
+1. **Remote DuckDB Database** - Pre-configured views pointing to parquet files
+2. **Direct Parquet Files** - Query parquet files directly from R2/S3
+
+## Method 1: Remote DuckDB Database (Recommended)
+
+The easiest way to access the data is using the remote DuckDB database file.
+
+### Download the Database
+
+```bash
+wget https://store.yourdomain.com/omicidx.duckdb
+```
+
+Or download directly from your browser.
+
+### Connect and Query
+
+```python
+import duckdb
+
+# Connect to the database
+conn = duckdb.connect('omicidx.duckdb')
+
+# List available schemas
+schemas = conn.execute("SHOW SCHEMAS").df()
+print(schemas)
+
+# List tables in a schema
+tables = conn.execute("SHOW TABLES FROM bronze").df()
+print(tables)
+
+# Query the data
+result = conn.execute("""
+    SELECT 
+        study_type,
+        COUNT(*) as count
+    FROM bronze.stg_sra_studies
+    GROUP BY study_type
+    ORDER BY count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+The database contains views that automatically point to the parquet files on R2/S3. You query as normal, and DuckDB fetches the data as needed.
+
+[Learn more about remote database usage →](remote-database.qmd)
+
+## Method 2: Direct Parquet Queries
+
+You can also query parquet files directly without downloading the database.
+
+```python
+import duckdb
+
+# Query a specific parquet file
+result = duckdb.execute("""
+    SELECT *
+    FROM read_parquet('https://store.yourdomain.com/data/bronze/stg_sra_studies.parquet')
+    LIMIT 10
+""").df()
+```
+
+[Learn more about direct parquet queries →](direct-parquet.qmd)
+
+## Data Catalog
+
+The complete data catalog is available at:
+
+```
+https://store.yourdomain.com/catalog.json
+```
+
+This catalog contains:
+- List of all available tables
+- Schema information (columns, types)
+- File locations for each table
+- Metadata about datasets
+
+You can use this catalog to discover what data is available and where to find it.
+
+## Next Steps
+
+- [Using the Remote Database](remote-database.qmd) - Detailed guide
+- [Direct Parquet Queries](direct-parquet.qmd) - Query files directly
+- [Browse the Data Catalog](../data-catalog/overview.qmd) - See all available datasets
+- [Example Queries](../examples/common-queries.ipynb) - Interactive examples
+

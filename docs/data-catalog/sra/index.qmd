@@ -1,0 +1,103 @@
+---
+title: "SRA Data"
+---
+
+## Overview
+
+SRA (Sequence Read Archive) data from NCBI, containing metadata about sequencing studies, experiments, runs, and samples.
+
+## Available Tables
+
+### bronze.stg_sra_studies
+
+Study-level metadata (SRP* accessions).
+
+**Key Columns**:
+- `accession` - Study accession (e.g., SRP123456)
+- `title` - Study title
+- `study_type` - Type of study
+- `organism` - Primary organism
+- `publish_date` - Publication date
+
+[View Schema →](../../schemas/bronze/stg-sra-studies.qmd)
+
+### bronze.stg_sra_experiments
+
+Experiment-level metadata (SRX* accessions).
+
+**Key Columns**:
+- `accession` - Experiment accession
+- `study_accession` - Link to study
+- `platform` - Sequencing platform
+- `library_strategy` - Library strategy
+
+[View Schema →](../../schemas/bronze/stg-sra-experiments.qmd)
+
+### bronze.stg_sra_runs
+
+Run-level metadata (SRR* accessions).
+
+**Key Columns**:
+- `accession` - Run accession
+- `experiment_accession` - Link to experiment
+- `file_size` - File size
+- `read_count` - Number of reads
+
+[View Schema →](../../schemas/bronze/stg-sra-runs.qmd)
+
+### bronze.stg_sra_samples
+
+Sample-level metadata (SRS* accessions).
+
+**Key Columns**:
+- `accession` - Sample accession
+- `title` - Sample title
+- `organism` - Organism
+- `attributes` - Additional attributes
+
+[View Schema →](../../schemas/bronze/stg-sra-samples.qmd)
+
+## Example Queries
+
+```python
+import duckdb
+
+conn = duckdb.connect('omicidx.duckdb')
+
+# Count studies by type
+result = conn.execute("""
+    SELECT 
+        study_type,
+        COUNT(*) as count
+    FROM bronze.stg_sra_studies
+    GROUP BY study_type
+    ORDER BY count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+[More Examples →](../../examples/common-queries.ipynb)
+
+## Data Relationships
+
+```
+studies (SRP*)
+  └── experiments (SRX*)
+        └── runs (SRR*)
+  └── samples (SRS*)
+```
+
+## Access
+
+- **Remote Database**: Query via `bronze.stg_sra_*` tables
+- **Parquet Files**: `https://store.yourdomain.com/data/bronze/stg_sra_*.parquet`
+- **Catalog**: See `catalog.json` for complete file locations
+
+## Next Steps
+
+- [View Detailed Schemas](../../schemas/bronze/)
+- [Example Queries](../../examples/common-queries.ipynb)
+- [GEO Data](../geo/index.qmd)
+

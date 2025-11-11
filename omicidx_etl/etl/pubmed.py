@@ -29,7 +29,8 @@ def load_available_urls():
     """Load the available urls from the base directory.
     
     Note that this function covers both the base and update URLs."""
-    available_urls = list(PUBMED_BASE.glob("**/pubmed*.xml.gz"))
+    available_urls = list(PUBMED_BASE.glob("baseline/pubmed*.xml.gz"))
+    available_urls += list(PUBMED_BASE.glob("updatefiles/pubmed*.xml.gz"))
     id_to_available_url_map = {
         _url_to_pubmed_id(url): url for url in available_urls
     }

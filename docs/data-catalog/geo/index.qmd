@@ -1,0 +1,102 @@
+---
+title: "GEO Data"
+---
+
+## Overview
+
+GEO (Gene Expression Omnibus) data from NCBI, containing gene expression datasets, samples, series, and platforms.
+
+## Available Tables
+
+### bronze.stg_geo_samples
+
+Sample-level metadata (GSM* accessions).
+
+**Key Columns**:
+- `accession` - Sample accession (e.g., GSM123456)
+- `title` - Sample title
+- `organism` - Organism
+- `last_update_date` - Last update date
+
+[View Schema →](../../schemas/bronze/stg-geo-samples.qmd)
+
+### bronze.stg_geo_series
+
+Series-level metadata (GSE* accessions).
+
+**Key Columns**:
+- `accession` - Series accession (e.g., GSE12345)
+- `title` - Series title
+- `summary` - Series summary
+- `last_update_date` - Last update date
+
+[View Schema →](../../schemas/bronze/stg-geo-series.qmd)
+
+### bronze.stg_geo_platforms
+
+Platform-level metadata (GPL* accessions).
+
+**Key Columns**:
+- `accession` - Platform accession
+- `title` - Platform title
+- `technology` - Technology type
+
+[View Schema →](../../schemas/bronze/stg-geo-platforms.qmd)
+
+### geometadb Views
+
+GEOmetadb compatibility views for backward compatibility:
+
+- `geometadb.gsm` - GEO Samples view
+- `geometadb.gse` - GEO Series view
+- `geometadb.gpl` - GEO Platforms view
+- `geometadb.gse_gsm` - Series-Sample junction
+- `geometadb.gse_gpl` - Series-Platform junction
+
+[View GEOmetadb Schemas →](../../schemas/geometadb/)
+
+## Example Queries
+
+```python
+import duckdb
+
+conn = duckdb.connect('omicidx.duckdb')
+
+# Count series by organism
+result = conn.execute("""
+    SELECT 
+        organism,
+        COUNT(*) as series_count
+    FROM bronze.stg_geo_series
+    WHERE organism IS NOT NULL
+    GROUP BY organism
+    ORDER BY series_count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+[More Examples →](../../examples/common-queries.ipynb)
+
+## Data Relationships
+
+```
+series (GSE*)
+  ├── samples (GSM*) [via gse_gsm]
+  └── platforms (GPL*) [via gse_gpl]
+```
+
+## Access
+
+- **Remote Database**: Query via `bronze.stg_geo_*` or `geometadb.*` tables
+- **Parquet Files**: `https://store.yourdomain.com/data/bronze/stg_geo_*.parquet`
+- **Catalog**: See `catalog.json` for complete file locations
+
+## Next Steps
+
+- [View Detailed Schemas](../../schemas/bronze/)
+- [GEOmetadb Compatibility Views](../../schemas/geometadb/)
+- [Example Queries](../../examples/common-queries.ipynb)
+- [SRA Data](../sra/index.qmd)
+

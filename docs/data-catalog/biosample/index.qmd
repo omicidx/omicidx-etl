@@ -1,0 +1,69 @@
+---
+title: "BioSample Data"
+---
+
+## Overview
+
+BioSample data from both NCBI and EBI, containing biological sample metadata.
+
+## Available Tables
+
+### bronze.stg_ncbi_biosample
+
+NCBI BioSample data.
+
+**Key Columns**:
+- `accession` - BioSample accession
+- `title` - Sample title
+- `organism` - Organism
+- `attributes` - Sample attributes
+
+[View Schema →](../../schemas/bronze/stg-ncbi-biosample.qmd)
+
+### bronze.stg_ebi_biosample
+
+EBI BioSample data.
+
+**Key Columns**:
+- `accession` - BioSample accession
+- `name` - Sample name
+- `characteristics` - Sample characteristics
+
+[View Schema →](../../schemas/bronze/stg-ebi-biosample.qmd)
+
+## Example Queries
+
+```python
+import duckdb
+
+conn = duckdb.connect('omicidx.duckdb')
+
+# Count samples by organism (NCBI)
+result = conn.execute("""
+    SELECT 
+        organism,
+        COUNT(*) as sample_count
+    FROM bronze.stg_ncbi_biosample
+    WHERE organism IS NOT NULL
+    GROUP BY organism
+    ORDER BY sample_count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+[More Examples →](../../examples/common-queries.ipynb)
+
+## Access
+
+- **Remote Database**: Query via `bronze.stg_ncbi_biosample` or `bronze.stg_ebi_biosample`
+- **Parquet Files**: `https://store.yourdomain.com/data/bronze/stg_*_biosample.parquet`
+- **Catalog**: See `catalog.json` for complete file locations
+
+## Next Steps
+
+- [View Detailed Schemas](../../schemas/bronze/)
+- [Example Queries](../../examples/common-queries.ipynb)
+- [SRA Data](../sra/index.qmd)
+

@@ -1,0 +1,179 @@
+---
+title: "Using the Remote Database"
+---
+
+## Overview
+
+The remote DuckDB database (`omicidx.duckdb`) contains pre-configured views that point to parquet files stored on R2/S3. This is the easiest way to query the OmicIDX data warehouse.
+
+## Downloading the Database
+
+```bash
+# Using wget
+wget https://store.yourdomain.com/omicidx.duckdb
+
+# Using curl
+curl -O https://store.yourdomain.com/omicidx.duckdb
+
+# Or download directly from your browser
+```
+
+The database file is lightweight (typically < 1MB) as it only contains view definitions, not the actual data.
+
+## Connecting to the Database
+
+```python
+import duckdb
+
+# Connect to the downloaded database
+conn = duckdb.connect('omicidx.duckdb')
+```
+
+## Exploring Available Data
+
+### List Schemas
+
+```python
+schemas = conn.execute("SHOW SCHEMAS").df()
+print(schemas)
+```
+
+Common schemas:
+- `bronze` - Staging tables (cleaned source data)
+- `geometadb` - GEOmetadb compatibility views
+- `marts` - Analytics-ready tables (if available)
+
+### List Tables
+
+```python
+# List all tables in bronze schema
+tables = conn.execute("SHOW TABLES FROM bronze").df()
+print(tables)
+
+# List tables in all schemas
+for schema in ['bronze', 'geometadb']:
+    tables = conn.execute(f"SHOW TABLES FROM {schema}").df()
+    print(f"\n{schema} schema:")
+    print(tables)
+```
+
+### Describe a Table
+
+```python
+# Get column information
+columns = conn.execute("DESCRIBE bronze.stg_sra_studies").df()
+print(columns)
+```
+
+## Querying the Data
+
+### Basic Queries
+
+```python
+# Simple SELECT
+result = conn.execute("""
+    SELECT *
+    FROM bronze.stg_sra_studies
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+### Aggregations
+
+```python
+# Count by study type
+result = conn.execute("""
+    SELECT 
+        study_type,
+        COUNT(*) as count
+    FROM bronze.stg_sra_studies
+    GROUP BY study_type
+    ORDER BY count DESC
+""").df()
+
+print(result)
+```
+
+### Joins
+
+```python
+# Join studies with experiments
+result = conn.execute("""
+    SELECT 
+        s.accession as study,
+        s.title,
+        COUNT(e.accession) as experiment_count
+    FROM bronze.stg_sra_studies s
+    LEFT JOIN bronze.stg_sra_experiments e 
+        ON s.accession = e.study_accession
+    GROUP BY s.accession, s.title
+    ORDER BY experiment_count DESC
+    LIMIT 10
+""").df()
+
+print(result)
+```
+
+## How It Works
+
+The database file contains views like:
+
+```sql
+CREATE VIEW bronze.stg_sra_studies AS
+SELECT * 
+FROM read_parquet('https://store.yourdomain.com/data/bronze/stg_sra_studies.parquet');
+```
+
+When you query these views, DuckDB:
+1. Fetches the parquet file from R2/S3
+2. Reads only the columns you need
+3. Applies filters and aggregations
+4. Returns results
+
+This means you only download the data you actually query, making it efficient even for large datasets.
+
+## Performance Tips
+
+1. **Use LIMIT** when exploring data
+2. **Filter early** - Apply WHERE clauses to reduce data transfer
+3. **Select specific columns** - Don't use `SELECT *` unless needed
+4. **Cache results** - Save frequently-used queries locally
+
+## Example: Complete Workflow
+
+```python
+import duckdb
+import pandas as pd
+
+# Connect
+conn = duckdb.connect('omicidx.duckdb')
+
+# Explore
+tables = conn.execute("SHOW TABLES FROM bronze").df()
+print("Available tables:", tables['name'].tolist())
+
+# Query
+result = conn.execute("""
+    SELECT 
+        organism,
+        COUNT(*) as study_count
+    FROM bronze.stg_sra_studies
+    WHERE organism IS NOT NULL
+    GROUP BY organism
+    ORDER BY study_count DESC
+    LIMIT 20
+""").df()
+
+# Work with results
+print(result)
+# result is a pandas DataFrame - use it as normal
+```
+
+## Next Steps
+
+- [Direct Parquet Queries](direct-parquet.qmd) - Alternative access method
+- [Example Queries](../examples/common-queries.ipynb) - More examples
+- [Data Catalog](../data-catalog/overview.qmd) - Browse all datasets
+

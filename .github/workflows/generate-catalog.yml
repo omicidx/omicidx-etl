@@ -1,0 +1,54 @@
+name: Generate Data Catalog
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches: [main]
+    paths:
+      - 'sqlmesh/models/**'
+      - 'sqlmesh/scripts/generate_catalog.py'
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  generate-catalog:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v1
+      
+      - name: Install dependencies
+        run: uv sync
+      
+      - name: Generate catalog
+        run: |
+          uv run oidx catalog generate --output catalog-viewer/public/catalog.json
+        env:
+          OMICIDX_DATA_ROOT: ${{ secrets.OMICIDX_DATA_ROOT || '/data/davsean/omicidx_root' }}
+      
+      - name: Upload catalog artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: catalog
+          path: catalog-viewer/public/catalog.json
+          retention-days: 30
+      
+      # Optional: Commit catalog if it changed
+      # - name: Commit catalog
+      #   if: github.ref == 'refs/heads/main'
+      #   run: |
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add catalog-viewer/public/catalog.json
+      #     git diff --staged --quiet || git commit -m "Update data catalog [skip ci]"
+      #     git push
+

@@ -1,0 +1,10 @@
+_site/
+_freeze/
+*.duckdb
+*.duckdb.wal
+.DS_Store
+*.log
+
+
+/.quarto/
+**/*.quarto_ipynb

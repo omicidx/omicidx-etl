@@ -1,0 +1,254 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OmicIDX Data Catalog Schema",
+  "description": "Schema for the data catalog JSON file generated from SQLMesh models and DuckDB",
+  "type": "object",
+  "required": ["version", "generated_at", "database_path", "tables", "layers"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Catalog schema version",
+      "example": "1.0"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when catalog was generated",
+      "example": "2024-01-15T10:30:00Z"
+    },
+    "database_path": {
+      "type": "string",
+      "description": "Path to the DuckDB database file",
+      "example": "sqlmesh/db.duckdb"
+    },
+    "tables": {
+      "type": "array",
+      "description": "Array of table definitions",
+      "items": {
+        "$ref": "#/definitions/Table"
+      }
+    },
+    "layers": {
+      "type": "object",
+      "description": "Tables organized by layer (raw, bronze, geometadb)",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "example": {
+        "raw": ["raw.src_sra_studies", "raw.src_geo_samples"],
+        "bronze": ["bronze.stg_sra_studies", "bronze.stg_geo_samples"],
+        "geometadb": ["geometadb.gsm", "geometadb.gse"]
+      }
+    }
+  },
+  "definitions": {
+    "Table": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Full table name including schema (e.g., bronze.stg_sra_studies)",
+          "example": "bronze.stg_sra_studies"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Schema name (raw, bronze, geometadb)",
+          "enum": ["raw", "bronze", "geometadb"]
+        },
+        "table_name": {
+          "type": "string",
+          "description": "Table name without schema",
+          "example": "stg_sra_studies"
+        },
+        "kind": {
+          "type": "string",
+          "description": "SQLMesh model kind",
+          "enum": ["VIEW", "INCREMENTAL_BY_TIME_RANGE", "INCREMENTAL_BY_UNIQUE_KEY", "FULL"],
+          "example": "INCREMENTAL_BY_TIME_RANGE"
+        },
+        "grain": {
+          "type": ["string", "array"],
+          "description": "Grain definition (unique identifier column(s))",
+          "example": "accession"
+        },
+        "cron": {
+          "type": "string",
+          "description": "Cron schedule for model execution",
+          "example": "@daily"
+        },
+        "time_column": {
+          "type": "string",
+          "description": "Time column for incremental models",
+          "example": "updated_date"
+        },
+        "description": {
+          "type": "string",
+          "description": "Table description extracted from SQL comments",
+          "example": "Bronze staging: Incremental SRA studies with update dates from accessions"
+        },
+        "file_path": {
+          "type": "string",
+          "description": "Path to the SQLMesh model file",
+          "example": "sqlmesh/models/bronze/stg_sra_studies.sql"
+        },
+        "row_count": {
+          "type": ["integer", "null"],
+          "description": "Number of rows in the table",
+          "example": 12345678
+        },
+        "size_bytes": {
+          "type": ["integer", "null"],
+          "description": "Estimated table size in bytes (if available)",
+          "example": 1234567890
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "List of table names this table depends on",
+          "items": {
+            "type": "string"
+          },
+          "example": ["raw.src_sra_studies", "raw.src_sra_accessions"]
+        },
+        "dependents": {
+          "type": "array",
+          "description": "List of table names that depend on this table",
+          "items": {
+            "type": "string"
+          },
+          "example": ["geometadb.gse"]
+        },
+        "columns": {
+          "type": "array",
+          "description": "Array of column definitions",
+          "items": {
+            "$ref": "#/definitions/Column"
+          }
+        },
+        "sql_content": {
+          "type": "string",
+          "description": "Full SQL content of the model (optional, for reference)"
+        }
+      }
+    },
+    "Column": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Column name",
+          "example": "accession"
+        },
+        "type": {
+          "type": "string",
+          "description": "Column data type",
+          "example": "VARCHAR"
+        },
+        "nullable": {
+          "type": "boolean",
+          "description": "Whether the column allows NULL values",
+          "example": false
+        },
+        "description": {
+          "type": "string",
+          "description": "Column description (if available)",
+          "example": "SRA study accession"
+        },
+        "statistics": {
+          "$ref": "#/definitions/ColumnStatistics"
+        },
+        "null_count": {
+          "type": ["integer", "null"],
+          "description": "Number of NULL values in the column"
+        },
+        "null_percentage": {
+          "type": ["number", "null"],
+          "description": "Percentage of NULL values (0-100)"
+        },
+        "distinct_count": {
+          "type": ["integer", "null"],
+          "description": "Number of distinct values"
+        },
+        "min": {
+          "type": ["number", "null"],
+          "description": "Minimum value (for numeric columns)"
+        },
+        "max": {
+          "type": ["number", "null"],
+          "description": "Maximum value (for numeric columns)"
+        },
+        "mean": {
+          "type": ["number", "null"],
+          "description": "Mean/average value (for numeric columns)"
+        },
+        "std": {
+          "type": ["number", "null"],
+          "description": "Standard deviation (for numeric columns)"
+        },
+        "q25": {
+          "type": ["number", "null"],
+          "description": "25th percentile (first quartile)"
+        },
+        "q50": {
+          "type": ["number", "null"],
+          "description": "50th percentile (median)"
+        },
+        "q75": {
+          "type": ["number", "null"],
+          "description": "75th percentile (third quartile)"
+        }
+      }
+    },
+    "ColumnStatistics": {
+      "type": "object",
+      "description": "Statistical information about a column",
+      "properties": {
+        "null_count": {
+          "type": ["integer", "null"],
+          "description": "Number of NULL values"
+        },
+        "null_percentage": {
+          "type": ["number", "null"],
+          "description": "Percentage of NULL values (0-100)"
+        },
+        "distinct_count": {
+          "type": ["integer", "null"],
+          "description": "Number of distinct values"
+        },
+        "min": {
+          "type": ["number", "null"],
+          "description": "Minimum value"
+        },
+        "max": {
+          "type": ["number", "null"],
+          "description": "Maximum value"
+        },
+        "mean": {
+          "type": ["number", "null"],
+          "description": "Mean value"
+        },
+        "std": {
+          "type": ["number", "null"],
+          "description": "Standard deviation"
+        },
+        "p25": {
+          "type": ["number", "null"],
+          "description": "25th percentile"
+        },
+        "p50": {
+          "type": ["number", "null"],
+          "description": "50th percentile (median)"
+        },
+        "p75": {
+          "type": ["number", "null"],
+          "description": "75th percentile"
+        }
+      }
+    }
+  }
+}
+

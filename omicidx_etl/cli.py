@@ -10,10 +10,10 @@ from omicidx_etl.geo.extract import geo
 from omicidx_etl.etl.icite import icite
 from omicidx_etl.etl.pubmed import pubmed
 from omicidx_etl.etl.europepmc_textmined import europepmc
+from omicidx_etl.ebi_biosample.extract import ebi_biosample
 from .nih_reporter import nih_reporter
-from .catalog import catalog
 from .status import status
-from .warehouse_cli import warehouse
+from .catalog import catalog
 
 
 @click.group()
@@ -32,7 +32,8 @@ cli.add_command(icite)
 cli.add_command(pubmed)
 cli.add_command(europepmc)
 cli.add_command(nih_reporter)
-cli.add_command(warehouse)
+cli.add_command(ebi_biosample)
+cli.add_command(catalog)
 
 if __name__ == "__main__":
     cli()

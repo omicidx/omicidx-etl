@@ -1,0 +1,98 @@
+---
+title: "Data Catalog Overview"
+---
+
+## Available Datasets
+
+The OmicIDX data warehouse contains the following datasets:
+
+## SRA (Sequence Read Archive)
+
+**Source**: NCBI Sequence Read Archive  
+**Records**: ~30M experiments, ~40M runs  
+**Update Frequency**: Daily
+
+Contains:
+- Studies (SRP*)
+- Experiments (SRX*)
+- Runs (SRR*)
+- Samples (SRS*)
+
+[Browse SRA Data →](sra/index.qmd)
+
+## GEO (Gene Expression Omnibus)
+
+**Source**: NCBI Gene Expression Omnibus  
+**Records**: ~7M samples, ~260K series, ~30K platforms  
+**Update Frequency**: Daily
+
+Contains:
+- Samples (GSM*)
+- Series (GSE*)
+- Platforms (GPL*)
+- GEOmetadb compatibility views
+
+[Browse GEO Data →](geo/index.qmd)
+
+## BioSample
+
+**Source**: NCBI BioSample, EBI BioSample  
+**Records**: ~40M (NCBI) + ~10M (EBI) samples  
+**Update Frequency**: Daily
+
+Contains:
+- Sample metadata
+- Characteristics
+- Relationships
+
+[Browse BioSample Data →](biosample/index.qmd)
+
+## BioProject
+
+**Source**: NCBI BioProject  
+**Records**: ~800K projects  
+**Update Frequency**: Daily
+
+Contains:
+- Project metadata
+- Descriptions
+- Links to related data
+
+[Browse BioProject Data →](bioproject/index.qmd)
+
+## Data Catalog JSON
+
+The complete machine-readable catalog is available at:
+
+```
+https://store.yourdomain.com/catalog.json
+```
+
+This catalog contains:
+- List of all tables
+- Schema information (columns, types, descriptions)
+- File locations (parquet file URLs)
+- Dataset metadata
+- Update timestamps
+
+## Schema Organization
+
+Data is organized into schemas:
+
+- **`bronze`** - Staging tables with cleaned, standardized data
+- **`geometadb`** - GEOmetadb compatibility views
+- **`marts`** - Analytics-ready tables (if available)
+
+## Access Methods
+
+All datasets can be accessed via:
+
+1. [Remote DuckDB Database](../getting-started/remote-database.qmd) - Recommended
+2. [Direct Parquet Queries](../getting-started/direct-parquet.qmd) - Alternative
+
+## Next Steps
+
+- Browse individual dataset pages for detailed information
+- Check [schemas](../schemas/) for complete table documentation
+- See [example queries](../examples/) for usage patterns
+
