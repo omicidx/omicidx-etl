@@ -54,6 +54,7 @@ uv run sqlmesh plan --select bronze.stg_sra_experiments --auto-apply
 raw/               # Source views over parquet/NDJSON files (internal)
 ├── src_geo_samples.sql
 ├── src_geo_series.sql
+├── src_geo_series_with_rnaseq_counts.sql
 ├── src_geo_platforms.sql
 ├── src_sra_accessions.sql
 ├── src_sra_experiments.sql
@@ -67,6 +68,7 @@ raw/               # Source views over parquet/NDJSON files (internal)
 bronze/            # Incremental staging tables with light transformations
 ├── stg_geo_samples.sql
 ├── stg_geo_series.sql
+├── stg_geo_series_with_rnaseq_counts.sql
 ├── stg_geo_platforms.sql
 ├── stg_sra_accessions.sql
 ├── stg_sra_experiments.sql
@@ -86,7 +88,7 @@ geometadb/         # GEOmetadb compatibility views
 └── geo_supplemental_files.sql
 ```
 
-**Status**: 28 models, 6 tests
+**Status**: 30 models, 6 tests
 
 ### Future Layers
 
@@ -117,7 +119,7 @@ FROM read_ndjson_auto(@data_root || '/geo/gsm*.ndjson.gz', union_by_name=true)
 ```
 
 **Data Sources**:
-- GEO: `/geo/gsm*.ndjson.gz`, `/geo/gse*.ndjson.gz`, `/geo/gpl*.ndjson.gz`
+- GEO: `/geo/gsm*.ndjson.gz`, `/geo/gse*.ndjson.gz`, `/geo/gpl*.ndjson.gz`, `/geo/gse_with_rna_seq_counts.jsonl.gz`
 - SRA: `/sra/*Full-{entity}-*.parquet`, `/sra/sra_accessions.parquet`
 - NCBI: `/biosample/biosample-*.parquet`, `/biosample/bioproject-*.parquet`
 - EBI: `/ebi_biosample/biosamples-*.parquet`
@@ -126,7 +128,7 @@ FROM read_ndjson_auto(@data_root || '/geo/gsm*.ndjson.gz', union_by_name=true)
 
 **Purpose**: Incremental staging with light cleaning and standardization
 
-**Pattern**:
+**Patterns**:
 ```sql
 MODEL (
     name bronze.stg_geo_samples,
@@ -141,8 +143,24 @@ SELECT * FROM raw.src_geo_samples
 WHERE last_update_date BETWEEN @start_ds AND @end_ds
 ```
 
+```sql
+MODEL (
+    name bronze.stg_geo_series_with_rnaseq_counts,
+    kind INCREMENTAL_BY_UNIQUE_KEY (
+        unique_key (accession)
+    ),
+    cron '@daily',
+    grain accession
+);
+
+SELECT
+    accession
+FROM raw.src_geo_series_with_rnaseq_counts
+```
+
 **Key Features**:
 - Incremental processing using `INCREMENTAL_BY_TIME_RANGE`
+- Unique key-based incremental loading for append-only datasets
 - Runs daily at midnight UTC (configurable)
 - Grain defined on unique identifier (typically `accession`)
 - Standardized column names (`snake_case`)
@@ -279,6 +297,7 @@ uv run sqlmesh test
 | **NCBI SRA Accessions** | ~40M records | `/sra/` | `sra_accessions.parquet` |
 | **GEO Samples** | ~7M samples | `/geo/` | `gsm*.ndjson.gz` |
 | **GEO Series** | ~260K series | `/geo/` | `gse*.ndjson.gz` |
+| **GEO Series RNA-Seq Counts** | subset with RNA-Seq counts | `/geo/` | `gse_with_rna_seq_counts.jsonl.gz` |
 | **GEO Platforms** | ~30K platforms | `/geo/` | `gpl*.ndjson.gz` |
 | **NCBI BioSample** | ~40M samples | `/biosample/` | `biosample-*.parquet` |
 | **NCBI BioProject** | ~800K projects | `/biosample/` | `bioproject-*.parquet` |
