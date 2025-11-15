@@ -33,4 +33,4 @@ SELECT
     xrefs,
     reads
 FROM
-    read_parquet(@data_root || '/sra/*Full-experiment-*.parquet')
+    read_parquet(@data_root || '/sra/*-experiment-*.parquet')

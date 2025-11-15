@@ -22,4 +22,4 @@ SELECT
     total_bases,
     total_spots
 FROM
-    read_parquet(@data_root || '/sra/*Full-run-*.parquet')
+    read_parquet(@data_root || '/sra/*-run-*.parquet')

@@ -18,4 +18,4 @@ SELECT
     title,
     xrefs
 FROM
-    read_parquet(@data_root || '/sra/*Full-sample-*.parquet')
+    read_parquet(@data_root || '/sra/*-sample-*.parquet')

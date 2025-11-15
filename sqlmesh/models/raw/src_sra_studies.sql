@@ -22,4 +22,4 @@ SELECT
     title,
     xrefs
 FROM
-    read_parquet(@data_root || '/sra/*Full-study-*.parquet')
+    read_parquet(@data_root || '/sra/*-study-*.parquet')
