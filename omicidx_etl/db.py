@@ -3,6 +3,7 @@ import duckdb
 import contextlib
 from pathlib import Path
 from typing import Optional
+import tempfile
 
 
 def duckdb_setup_sql(temp_directory: Optional[str] = None):
@@ -15,6 +16,10 @@ def duckdb_setup_sql(temp_directory: Optional[str] = None):
     if temp_directory is None:
         temp_directory = '/tmp/db_temp'
 
+    endpoint = 's3.amazonaws.com'
+    if settings.AWS_ENDPOINT_URL is not None:
+        endpoint = settings.AWS_ENDPOINT_URL.replace('https://', '').replace('http://', '')
+
     return f"""
     INSTALL httpfs;
     LOAD httpfs;
@@ -22,18 +27,14 @@ def duckdb_setup_sql(temp_directory: Optional[str] = None):
     SET preserve_insertion_order=false;
     SET temp_directory='{temp_directory}';
     SET max_temp_directory_size='100GB';
-    CREATE SECRET (
-        TYPE r2,
-        KEY_ID '{settings.R2_ACCESS_KEY_ID}',
-        SECRET '{settings.R2_SECRET_ACCESS_KEY}',
-        ACCOUNT_ID '{settings.R2_ACCOUNT_ID}'
-    );
-    CREATE SECRET osn (
-        TYPE s3,
+    CREATE SECRET minio (
+        TYPE S3,
         KEY_ID '{settings.AWS_ACCESS_KEY_ID}',
         SECRET '{settings.AWS_SECRET_ACCESS_KEY}',
-        ENDPOINT '{settings.AWS_ENDPOINT_URL or "https://s3.amazonaws.com"}'
-    )
+        ENDPOINT '{endpoint}',
+        URL_STYLE '{settings.AWS_URL_STYLE or "path"}',
+        USE_SSL 'true'
+    );
     """
 
 @contextlib.contextmanager
@@ -52,5 +53,20 @@ def duckdb_connection(temp_directory: Optional[str] = None):
             con.execute("SELECT * FROM large_table")
     """
     with duckdb.connect() as con:
-        con.execute(duckdb_setup_sql(temp_directory))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            if temp_directory is None:
+                temp_directory = temp_dir
+            else:
+                Path(temp_directory).mkdir(parents=True, exist_ok=True)
+        sql = duckdb_setup_sql(temp_directory)
+        con.execute(sql)
         yield con
+        
+        
+if __name__ == "__main__":
+    with duckdb_connection() as con:
+        # Example usage of the connection
+        result = con.execute("select * from read_parquet('s3://omicidx/sra/raw/study/**/*parquet') limit 10").df()
+        print(result)
+        
+        con.execute("copy (select 1 as abc) to 's3://omicidx/test.parquet' (format parquet);")
