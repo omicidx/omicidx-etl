@@ -5,7 +5,6 @@ Main CLI entry point for omicidx-etl.
 import click
 from omicidx_etl.biosample.extract import biosample
 from omicidx_etl.ebi_biosample.extract import ebi_biosample
-from omicidx_etl.sra.extract import sra
 from omicidx_etl.geo.extract import geo
 from omicidx_etl.etl.icite import icite
 from omicidx_etl.etl.pubmed import pubmed
@@ -14,6 +13,7 @@ from omicidx_etl.ebi_biosample.extract import ebi_biosample
 from .nih_reporter import nih_reporter
 from .status import status
 from .catalog import catalog
+from omicidx_etl.sra.cli import sra
 
 
 @click.group()
