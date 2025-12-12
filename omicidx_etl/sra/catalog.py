@@ -169,9 +169,8 @@ class SRACatalog:
                 url=mirror_entry.url,
                 out_dir=out_dir,
                 entity=mirror_entry.entity,
-                chunk_size=500_000,
                 # files will be named data_000000.parquet, data_000001.parquet, etc.
-                basename="data",
+                basename = "data"
             )
     
     def process(self, mirror_entries: List[SRAMirrorEntry]) -> None:

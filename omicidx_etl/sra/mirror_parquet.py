@@ -43,10 +43,8 @@ def process_mirror_entry_to_parquet_parts(
     url: str,
     out_dir: UPath,
     entity: str,
-    chunk_size: int = 100_000,
     normalize_fn: Optional[NormalizeFn] = None,
     basename: str = "data",
-    compression: str = "zstd",
 ) -> list[UPath]:
     """
     Stream parse + write parquet in bounded-memory chunks.
@@ -57,15 +55,16 @@ def process_mirror_entry_to_parquet_parts(
         url: URL to the SRA mirror .xml.gz file
         out_dir: Output directory (can be local or remote)
         entity: SRA entity type (run, study, sample, experiment)
-        chunk_size: Number of records per parquet part file
         schema: PyArrow schema (defaults to PYARROW_SCHEMAS[entity])
         normalize_fn: Optional function to normalize records
         basename: Base filename for parquet parts
-        compression: Parquet compression codec (default: zstd)
         
     Returns:
         List of written parquet file paths
     """
+    CHUNK_SIZE = 2_500_000
+    compression = "zstd"
+    
     import pyarrow as pa
     import pyarrow.parquet as pq
 
@@ -104,14 +103,14 @@ def process_mirror_entry_to_parquet_parts(
         part += 1
         buf.clear()
 
-    logger.info(f"Processing {url}", entity=entity, chunk_size=chunk_size)
+    logger.info(f"Processing {url}", entity=entity, chunk_size=CHUNK_SIZE)
 
     for rec in iter_sra_record_dicts_from_mirror_url(url):
         if normalize_fn is not None:
             rec = normalize_fn(rec, schema)
         buf.append(rec)
 
-        if len(buf) >= chunk_size:
+        if len(buf) >= CHUNK_SIZE:
             flush()
 
     flush()
