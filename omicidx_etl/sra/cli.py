@@ -146,7 +146,7 @@ def sync(
             return
         
         # Process entries
-        log.info("Creating SRACatalog")
+        log.info(f"Creating SRACatalog for destination {dest}")
         path_provider = get_path_provider(dest)
         catalog = SRACatalog(path_provider)
         
