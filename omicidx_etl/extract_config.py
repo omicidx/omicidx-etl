@@ -89,9 +89,11 @@ class PathProvider:
         Args:
             base_dir: Base directory for extractions. If None, loads from config.
         """
+        logger.debug(f"Initializing PathProvider with base_dir: {base_dir}")
         if base_dir is None:
             config = PathProviderConfig()
             base_dir = config.BASE_DIR
+            logger.debug(f"Loaded base_dir from config: {base_dir}")
 
         self.base_dir = UPath(base_dir)
         self._registry: Dict[str, list] = {}
@@ -237,6 +239,8 @@ def get_path_provider(base_dir: Optional[str | Path | UPath] = None) -> PathProv
     Returns:
         Global PathProvider instance
     """
+    return PathProvider(base_dir)
+    
     global _path_provider
 
     if _path_provider is None:
