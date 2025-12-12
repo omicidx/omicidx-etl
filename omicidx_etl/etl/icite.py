@@ -8,8 +8,14 @@ from upath import UPath
 from dotenv import load_dotenv
 import os
 import gzip
-from loguru import logger
 import tempfile
+from omicidx_etl.extract_config import get_path_provider
+
+from omicidx_etl.log import get_logger
+
+from omicidx_etl.db import duckdb_connection
+
+logger = get_logger(__name__)
 
 load_dotenv(".env")
 print(os.getenv("R2_ACCESS_KEY_ID"))
@@ -43,58 +49,50 @@ def get_icite_article_files(article_id: str):
         return response.json()
 
 
-
-def expand_tarfile(tarfname: UPath, extraction_directory: UPath) -> list[UPath]:
-    return_files = []
-    with tarfile.open(tarfname) as tar:
-        logger.info(f"Extracting {tarfname}")
-        for tar_element in tar.getnames():
-            fname = tar_element.split("/")[-1]
-            if fname.endswith(".json"):
-                logger.info(f"Extracting {fname}")
-                tar.extract(tar_element, extraction_directory.name)
-                localfile = extraction_directory / fname
-                localgzip = localfile.with_suffix(".jsonl.gz")
-                
-                with localfile.open('rb') as f:
-                    with gzip.open(localgzip,'wb') as gz:
-                        shutil.copyfileobj(f, gz)
-                localfile.unlink(missing_ok=True)
-                return_files.append(localgzip)
-
-    return return_files
-
-def expand_zipfile(zipfile_path: UPath, outpath: UPath) -> UPath:
-    logger.info(f"Extracting {zipfile_path}")
-    outfile_path = outpath / "open_citation_collection.csv.gz"
-    with zipfile.ZipFile(zipfile_path) as zip:
-        with zip.open("open_citation_collection.csv") as f:
-            with gzip.open(outfile_path, "wb") as gz:
-                shutil.copyfileobj(f, gz)
+def clean_icite_output_directory(output_directory: UPath) -> None:
+    if not output_directory.exists():
+        return
     
-    return outfile_path
+    try:
+        output_directory.fs.rm(output_directory.path, recursive=True)
+    except TypeError:
+        # Some FS implementations don't accept recursive as kwarg
+        output_directory.fs.rm(output_directory.path, True)
 
 
-
-def download_icite_file(file_json: list[dict], workpath: UPath) -> UPath:
-    url = list(filter(lambda x: x["name"] == "icite_metadata.tar.gz", file_json))[0][
+def icite_metadata_parquet(file_json: list[dict], workpath: UPath) -> list[UPath]:
+    url = list(filter(lambda x: x["name"] == "icite_metadata.csv", file_json))[0][
         "download_url"
     ]  # type: ignore
-    icite_tarfile = workpath / "icite_metadata.tar.gz"
-    with urlopen(url) as f:
-        logger.info(f"Downloading {url}")
-        shutil.copyfileobj(f, open(icite_tarfile, "wb"))
-    return icite_tarfile
+    
+    sql = f"""
+        COPY (SELECT * FROM read_csv_auto('{url}')) TO '{workpath / "icite_metadata"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
+    """
+    
+    logger.info(sql)
+    
+    with duckdb_connection() as conn:
+        conn.execute(sql)
+        
+    return list((workpath / "icite_metadata").glob("*.parquet"))
 
-def download_opencitation_file(file_json: list[dict], workpath: UPath) -> UPath:
+def icite_opencitation_parquet(file_json: list[dict], workpath: UPath) -> list[UPath]:
     url = list(
-        filter(lambda x: x["name"] == "open_citation_collection.zip", file_json)
+        filter(lambda x: x["name"] == "open_citation_collection.csv", file_json)
     )[0]["download_url"]
-    opencitation_zipfile = workpath / "open_citation_collection.zip"
-    with urlopen(url) as f:
-        logger.info(f"Downloading {url}")
-        shutil.copyfileobj(f, open(opencitation_zipfile, "wb"))
-    return opencitation_zipfile 
+    
+    
+    sql = f"""
+        COPY (SELECT * FROM read_csv_auto('{url}')) TO '{workpath / "icite_opencitation"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
+    """
+    
+    logger.info(sql)
+    
+    with duckdb_connection() as conn:
+        conn.execute(sql)
+        
+    return list((workpath / "icite_opencitation").glob("*.parquet"))
+
 
 def icite_flow(output_directory: UPath) -> list[UPath]:
     """Flow to ingest icite data from figshare
@@ -112,20 +110,22 @@ def icite_flow(output_directory: UPath) -> list[UPath]:
     """
     articles: list[dict] = get_icite_collection_articles()  # type: ignore
     files: list[dict] = get_icite_article_files(articles[0]["id"])  # type: ignore
+    
+    logger.info(f"found {len(files)} files in the latest ICITE article")
+    logger.info(files)
     # open a temporary directory for all this work:
     with tempfile.TemporaryDirectory() as workdir:
         workpath = UPath(workdir)
         workpath.mkdir(parents=True, exist_ok=True)
-        icite_tarfile = download_icite_file(files, workpath)
-        opencitation_zipfile = download_opencitation_file(files, workpath)
         
-        output_path = UPath("/tmp/omicidx/icite")
-        output_path.mkdir(parents=True, exist_ok=True)
+        # clean out the output directory
+        clean_icite_output_directory(output_directory)
         
-        extracted_files = expand_tarfile(icite_tarfile, output_path)
-        opencitation_file = expand_zipfile(opencitation_zipfile, output_path)
+        # create parquet files from the metadata and opencitation data
+        metadata_files = icite_metadata_parquet(files, output_directory)
+        opencitation_files = icite_opencitation_parquet(files, output_directory)
 
-    return extracted_files + [opencitation_file]
+    return metadata_files + opencitation_files
 
 
 @click.group()
@@ -134,8 +134,10 @@ def icite():
     pass
 
 @icite.command()
-@click.argument('output_dir', type=click.Path(path_type=UPath))
-def extract(output_dir: UPath):
+@click.argument('base_directory', type=click.Path(path_type=UPath))
+def extract(base_directory: UPath):
+    provider = get_path_provider(base_directory)
+    output_dir = provider.ensure_path("icite", "raw")
     icite_flow(output_dir)
     
 if __name__ == "__main__":
