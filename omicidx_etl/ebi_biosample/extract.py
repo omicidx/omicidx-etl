@@ -232,6 +232,12 @@ async def process_by_dates(start_date, end_date, output_directory: str = output_
     tmp_filename = get_filename(start_date, end_date, tmp=True, output_directory=output_directory)
     final_filename = get_filename(start_date, end_date, tmp=False, output_directory=output_directory)
 
+    from omicidx_etl.upath_testing import get_upath
+    output_path = get_upath()
+    
+    output_file = output_path / 'omicidx' / 'ebi_biosample' / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
+    output_semaphore = output_path / 'omicidx' / 'ebi_biosample' / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet.done"
+    
     if fetcher.any_samples:
         # Write samples to Parquet file
         schema = get_biosample_schema()
@@ -242,11 +248,16 @@ async def process_by_dates(start_date, end_date, output_directory: str = output_
             compression="zstd",
             compression_level=9
         )
+        
+
+        
+        with output_file.open('wb') as f, open(tmp_filename, 'rb') as src:
+            shutil.copyfileobj(src, f)
 
         # Move temp file to final location
-        shutil.move(tmp_filename, final_filename)
+        #shutil.move(tmp_filename, final_filename)
         # Create .done file next to the data file
-        UPath(final_filename + ".done").touch()
+        output_semaphore.touch()
         logger.info(f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted")
     else:
         # No samples found - create .done with special marker
@@ -312,4 +323,9 @@ def extract(output_dir: str):
 
 if __name__ == "__main__":
     logger.info("Starting EBI Biosample extraction")
+    from omicidx_etl.upath_testing import get_upath
+    output_dir = get_upath() / 'omicidx' / 'biosample'
+    of = output_dir / 'texting.txt'
+    with of.open('w') as f:
+        f.write("Testing EBI Biosample extraction\n")
     anyio.run(main)

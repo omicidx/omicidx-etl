@@ -56,4 +56,5 @@ packages = [{include = "omicidx_etl"}]
 [dependency-groups]
 dev = [
     "pydoc-markdown>=4.8.2",
+    "ruff>=0.14.9",
 ]
