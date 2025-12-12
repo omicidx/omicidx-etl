@@ -18,12 +18,17 @@ from omicidx.geo import parser as gp
 from tenacity import retry
 import tenacity
 from loguru import logger
+import logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 import tempfile
 import shutil
 
-OUTPUT_PATH = UPath(settings.PUBLISH_DIRECTORY) / "geo"
+from omicidx_etl.extract_config import get_path_provider
+
+
+OUTPUT_PATH =  get_path_provider('s3://omicidx').get_path('geo', 'raw')
 OUTPUT_DIR = str(OUTPUT_PATH)
 
 faulthandler.enable()
@@ -74,20 +79,22 @@ async def fetch_geo_soft_worker(
                 await entity_text_to_process_send.send(geo_text)
 
 
-def get_result_paths(start_date, end_date, output_path):
-    basepath = output_path
-    gse_path = (
-        basepath
-        / f"gse-{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}.ndjson.gz"
-    )
-    gsm_path = (
-        basepath
-        / f"gsm-{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}.ndjson.gz"
-    )
-    gpl_path = (
-        basepath
-        / f"gpl-{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}.ndjson.gz"
-    )
+def get_result_paths(start_date, end_date):
+    """Get the output upaths for the given month.
+    
+    Assumes hive-like partitioning by year and month.
+    Confirmed that duckdb can read from this structure.
+    
+    Args:
+        start_date: Start date of the month
+        end_date: End date of the month
+    
+    Returns:
+        Tuple of UPaths for GSE, GSM, and GPL
+    """
+    gse_path = OUTPUT_PATH / "gse" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gsm_path = OUTPUT_PATH / "gsm" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gpl_path = OUTPUT_PATH / "gpl" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
     return gse_path, gsm_path, gpl_path
 
 
@@ -98,7 +105,7 @@ async def write_geo_entity_worker(
     output_path: UPath = OUTPUT_PATH,
 ):
     """Writes the entity to a file."""
-    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date, output_path)
+    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
 
     record_counts = {
         "GSE": 0,
@@ -115,36 +122,39 @@ async def write_geo_entity_worker(
         gsm_written = False
         gpl_written = False
 
-        gse_tmp_write = gzip.open(gse_temp.name, "wb")
-        gsm_tmp_write = gzip.open(gsm_temp.name, "wb")
-        gpl_tmp_write = gzip.open(gpl_temp.name, "wb")
 
-        async with entity_text_to_process_receive:
-            async for text in entity_text_to_process_receive:
-                lines = [x.strip() for x in text.split("\n")]
-                entity = gp._parse_single_entity_soft(lines)
-                if entity is None:
-                    continue
-                if entity.accession.startswith("GSE"):  # type: ignore
-                    gse_tmp_write.write(
-                        entity.model_dump_json().encode("utf-8") + b"\n"
-                    )  # type: ignore
-                    gse_written = True
-                elif entity.accession.startswith("GSM"):  # type: ignore
-                    gsm_tmp_write.write(
-                        entity.model_dump_json().encode("utf-8") + b"\n"
-                    )  # type: ignore
-                    gsm_written = True
-                elif entity.accession.startswith("GPL"):  # type: ignore
-                    gpl_tmp_write.write(
-                        entity.model_dump_json().encode("utf-8") + b"\n"
-                    )  # type: ignore
-                    gpl_written = True
-                record_counts[entity.accession[:3]] += 1  # type: ignore
 
-        gse_tmp_write.close()
-        gsm_tmp_write.close()
-        gpl_tmp_write.close()
+        # Note that we don't use parquet because the schema
+        # vary by file. We just write ndjson files.
+        # The files can be converted in bulk to parquet by duckdb later
+        with (
+            gzip.open(gse_temp.name, "wb") as gse_tmp_write, 
+            gzip.open(gsm_temp.name, "wb") as gsm_tmp_write, 
+            gzip.open(gpl_temp.name, "wb") as gpl_tmp_write
+        ):
+            async with entity_text_to_process_receive:
+                async for text in entity_text_to_process_receive:
+                    lines = [x.strip() for x in text.split("\n")]
+                    entity = gp._parse_single_entity_soft(lines)
+                    if entity is None:
+                        continue
+                    if entity.accession.startswith("GSE"):  # type: ignore
+                        gse_tmp_write.write(
+                            entity.model_dump_json().encode("utf-8") + b"\n"
+                        )  # type: ignore
+                        gse_written = True
+                    elif entity.accession.startswith("GSM"):  # type: ignore
+                        gsm_tmp_write.write(
+                            entity.model_dump_json().encode("utf-8") + b"\n"
+                        )  # type: ignore
+                        gsm_written = True
+                    elif entity.accession.startswith("GPL"):  # type: ignore
+                        gpl_tmp_write.write(
+                            entity.model_dump_json().encode("utf-8") + b"\n"
+                        )  # type: ignore
+                        gpl_written = True
+                    record_counts[entity.accession[:3]] += 1  # type: ignore
+
 
         # Copy temporary files to final destinations
         if gse_written:
@@ -283,7 +293,7 @@ async def geo_metadata_by_date(
     end_date: date = date.today(),
     output_path: UPath = OUTPUT_PATH,
 ):
-    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date, output_path)
+    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
     if (
         gse_path.exists() or gsm_path.exists() or gpl_path.exists()
     ) and end_date < date.today():
@@ -358,7 +368,9 @@ async def main():
     print(os.environ)
     
     gses_with_rna_seq = gse_with_rna_seq_counts()
-    with gzip.open(OUTPUT_PATH / "gse_with_rna_seq_counts.jsonl.gz", "wb") as f:
+    outfile = OUTPUT_PATH / "gse_with_rna_seq_counts.jsonl.gz"
+    
+    with gzip.open(outfile.open('wb'), "wb") as f:
         for item in gses_with_rna_seq:
             f.write(orjson.dumps(item) + b"\n")
     logger.info(f"Wrote {len(gses_with_rna_seq)} GSEs with RNA-seq counts to {OUTPUT_PATH / 'gse_with_rna_seq_counts.jsonl.gz'}")
@@ -379,4 +391,7 @@ def geo():
 @geo.command()
 def extract():
     """Extract GEO metadata."""
+    anyio.run(main)
+
+if __name__ == "__main__":
     anyio.run(main)
