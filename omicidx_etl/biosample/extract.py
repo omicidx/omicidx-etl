@@ -8,8 +8,11 @@ from upath import UPath
 from pathlib import Path
 from omicidx.biosample import BioSampleParser, BioProjectParser
 import click
-from loguru import logger
-from omicidx_etl.extract_config import get_path_provider
+from omicidx_etl.log import get_logger
+from omicidx_etl.path_provider import get_path_provider
+import tenacity
+
+logger = get_logger(__name__)
 
 # Configuration
 BIO_SAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
@@ -20,14 +23,18 @@ OUTPUT_SUFFIX = ".parquet"
 BIOSAMPLE_BATCH_SIZE = 2_000_000  # Much larger than current 1M
 BIOPROJECT_BATCH_SIZE = 500_000  # Much larger than current 100k
 
-
+@tenacity.retry(
+    wait=tenacity.wait_exponential(multiplier=1, min=4, max=30),
+    retry=tenacity.retry_if_exception_type(httpx.RequestError),
+    stop=tenacity.stop_after_attempt(5),
+)
 def url_download(url: str, download_filename: str):
     """Download a file from a URL to a local destination."""
 
     try:
         logger.info(f"Downloading {url} to {download_filename}")
         with open(download_filename, "wb") as download_file:
-            with httpx.stream("GET", url) as response:
+            with httpx.stream("GET", url, timeout=60) as response:
                 response.raise_for_status()
 
                 for chunk in response.iter_bytes():
@@ -149,10 +156,10 @@ def biosample():
 
 
 @biosample.command()
-@click.argument("output_dir", type=click.Path(exists=True))
-def extract(output_dir: str):
+@click.argument("output_base")
+def extract(output_base: str):
     """Command-line interface for extraction and optional upload."""
-    output_path = Path(output_dir)
+    output_path = get_path_provider(output_base).get_path("biosample", "raw")
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)
 

@@ -8,7 +8,7 @@ from typing import List
 
 from upath import UPath
 
-from ..extract_config import PathProvider
+from ..path_provider import PathProvider
 from ..log import get_logger, log_operation, LogProgress
 from .mirror import SRAMirrorEntry
 from .mirror_parquet import process_mirror_entry_to_parquet_parts

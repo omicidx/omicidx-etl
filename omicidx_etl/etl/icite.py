@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 import gzip
 import tempfile
-from omicidx_etl.extract_config import get_path_provider
+from omicidx_etl.path_provider import get_path_provider
 
 from omicidx_etl.log import get_logger
 
@@ -66,7 +66,7 @@ def icite_metadata_parquet(file_json: list[dict], workpath: UPath) -> list[UPath
     ]  # type: ignore
     
     sql = f"""
-        COPY (SELECT * FROM read_csv_auto('{url}')) TO '{workpath / "icite_metadata"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
+        COPY (SELECT * FROM read_csv_auto('{url}', null_padding=true)) TO '{workpath / "icite_metadata"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
     """
     
     logger.info(sql)
@@ -83,7 +83,7 @@ def icite_opencitation_parquet(file_json: list[dict], workpath: UPath) -> list[U
     
     
     sql = f"""
-        COPY (SELECT * FROM read_csv_auto('{url}')) TO '{workpath / "icite_opencitation"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
+        COPY (SELECT * FROM read_csv_auto('{url}', null_padding=true)) TO '{workpath / "icite_opencitation"}' (FORMAT PARQUET, COMPRESSION ZSTD, FILE_SIZE_BYTES '500MB')
     """
     
     logger.info(sql)

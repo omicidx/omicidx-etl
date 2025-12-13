@@ -25,7 +25,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 import tempfile
 import shutil
 
-from omicidx_etl.extract_config import get_path_provider
+from omicidx_etl.path_provider import get_path_provider
 
 
 OUTPUT_PATH =  get_path_provider('s3://omicidx').get_path('geo', 'raw')

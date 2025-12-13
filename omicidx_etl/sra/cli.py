@@ -11,7 +11,7 @@ import click
 from loguru import logger
 
 from omicidx_etl.log import configure_logging, get_logger
-from omicidx_etl.extract_config import get_path_provider
+from omicidx_etl.path_provider import get_path_provider
 
 from .mirror import get_sra_mirror_entries, SRAMirrorEntry
 from .catalog import SRACatalog
