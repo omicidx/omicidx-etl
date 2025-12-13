@@ -30,28 +30,38 @@ clean:
 
 
 # oidx commands
+[group('oidx')]
+extract-all:
+    sra-extract && geo-extract && biosample-extract && ebi-biosample-extract && europepmc-extract && icite-extract
 
-# Run oidx sra extract
+
+# Run `oidx sra extract`
 [group('oidx')]
 sra-extract:
 	uv run oidx sra extract ${OMICIDX_DATA_ROOT}
 
-# Run oidx geo extract
+# Run `oidx geo extract`
 [group('oidx')]
 geo-extract:
 	uv run oidx geo extract ${OMICIDX_DATA_ROOT}
 
-# Run oidx biosample extract
+# Run `oidx biosample extract`
 [group('oidx')]
 biosample-extract:
 	uv run oidx biosample extract ${OMICIDX_DATA_ROOT}
 
-# Run oidx ebi_biosample extract
+# Run `oidx ebi_biosample extract`
 [group('oidx')]
 ebi-biosample-extract:
 	uv run oidx ebi-biosample extract ${OMICIDX_DATA_ROOT}
 
-# oidx europepmc extract
+# Run `oidx europepmc extract`
 [group('oidx')]
 europepmc-extract:
 	uv run oidx europepmc extract ${OMICIDX_DATA_ROOT}
+
+# Run `oidx icite extract`
+[group('oidx')]
+icite-extract:
+    uv run oidx icite extract ${OMICIDX_DATA_ROOT}
+
