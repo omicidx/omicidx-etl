@@ -14,9 +14,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
-output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
-
-
 def get_biosample_schema() -> pa.Schema:
     """Get the PyArrow schema for EBI BioSample records.
 
@@ -69,7 +66,7 @@ def get_filename(
     start_date: date,
     end_date: date,
     tmp: bool = True,
-    output_directory: str = output_dir
+    output_directory: str = ''
 ) -> str:
     """Get the filename for a given date range.
 
@@ -92,7 +89,7 @@ class SampleFetcher:
         size: int = 200,
         start_date: date = date.today(),
         end_date: date = date.today(),
-        output_directory: str = output_dir,
+        output_directory: str = ''
     ):
         self.cursor = cursor
         self.size = size
@@ -213,7 +210,7 @@ def get_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[tuple]:
         current_date = current_date + timedelta(days=1)
 
 
-async def process_by_dates(start_date, end_date, output_directory: str = output_dir):
+async def process_by_dates(start_date, end_date, output_directory: str):
     """Process single date range.
 
     This function fetches samples from the EBI API for a given date range
@@ -231,12 +228,11 @@ async def process_by_dates(start_date, end_date, output_directory: str = output_
 
     tmp_filename = get_filename(start_date, end_date, tmp=True, output_directory=output_directory)
     final_filename = get_filename(start_date, end_date, tmp=False, output_directory=output_directory)
-
-    from omicidx_etl.upath_testing import get_upath
-    output_path = get_upath()
     
-    output_file = output_path / 'omicidx' / 'ebi_biosample' / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
-    output_semaphore = output_path / 'omicidx' / 'ebi_biosample' / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet.done"
+    output_path = UPath(output_directory)
+
+    output_file = output_path / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
+    output_semaphore = output_path / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet.done"
     
     if fetcher.any_samples:
         # Write samples to Parquet file
@@ -272,13 +268,13 @@ async def process_by_dates(start_date, end_date, output_directory: str = output_
     
 
 
-async def limited_process(semaphore, start_date, end_date, output_directory: str = output_dir):
+async def limited_process(semaphore, start_date, end_date, output_directory: str=''):
     """This function is a wrapper around process_by_dates that limits the number of concurrent tasks."""
     async with semaphore:
         await process_by_dates(start_date, end_date, output_directory)
 
 
-async def main(output_directory: str = output_dir):
+async def main(output_directory: UPath):
     start = "2021-01-01"
     # Extract up to yesterday to avoid partial day data
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -292,10 +288,10 @@ async def main(output_directory: str = output_dir):
     async with anyio.create_task_group() as task_group:
         for start_date, end_date in get_date_ranges(start, end):
             if not UPath(
-                get_filename(start_date, end_date, tmp=False, output_directory=output_directory) + ".done"
+                get_filename(start_date, end_date, tmp=False, output_directory=str(output_directory)) + ".done"
             ).exists(): # and current_date < end_date: # repeat current month
                 logger.info(f"Scheduling processing for {start_date} to {end_date}")
-                task_group.start_soon(limited_process, semaphore, start_date, end_date, output_directory)
+                task_group.start_soon(limited_process, semaphore, start_date, end_date, str(output_directory))
 
 
 @click.group()
@@ -304,18 +300,19 @@ def ebi_biosample():
 
 @ebi_biosample.command()
 @click.argument(
-    "output_dir",
-    type=click.Path(),
-    default=None,
+    "output_base",
+    type = str,
 )
-def extract(output_dir: str):
+def extract(output_base: str):
     """Extract EBI Biosample data.
 
     Fetches biosample data from EBI API and saves to NDJSON format,
     organized by monthly date ranges.
     """
-    if output_dir is None:
-        output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
+    from omicidx_etl.path_provider import get_path_provider
+    
+    output_dir = get_path_provider(output_base).ensure_path('ebi_biosample','raw')
+    
 
     logger.info(f"Using output directory: {output_dir}")
     anyio.run(main, output_dir)
@@ -323,9 +320,4 @@ def extract(output_dir: str):
 
 if __name__ == "__main__":
     logger.info("Starting EBI Biosample extraction")
-    from omicidx_etl.upath_testing import get_upath
-    output_dir = get_upath() / 'omicidx' / 'biosample'
-    of = output_dir / 'texting.txt'
-    with of.open('w') as f:
-        f.write("Testing EBI Biosample extraction\n")
-    anyio.run(main)
+    extract()
