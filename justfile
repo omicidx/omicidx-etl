@@ -29,10 +29,6 @@ clean:
     cd sqlmesh && uv run sqlmesh clean
 
 
-# oidx commands
-[group('oidx')]
-extract-all:
-    sra-extract && geo-extract && biosample-extract && ebi-biosample-extract && europepmc-extract && icite-extract
 
 
 # Run `oidx sra extract`
@@ -65,3 +61,13 @@ europepmc-extract:
 icite-extract:
     uv run oidx icite extract ${OMICIDX_DATA_ROOT}
 
+# Run `oidx pubmed extract`
+[group('oidx')]
+pubmed-extract:
+    uv run oidx pubmed extract ${OMICIDX_DATA_ROOT}
+
+
+
+# oidx commands
+[group('oidx')]
+extract-all: sra-extract geo-extract biosample-extract europepmc-extract pubmed-extract
