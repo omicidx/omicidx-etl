@@ -35,17 +35,19 @@ faulthandler.enable()
 
 
 @retry(
-    wait=tenacity.wait_fixed(2),
+    wait=tenacity.wait_exponential_jitter(2, 30),
     stop=tenacity.stop_after_attempt(5),
-    retry=tenacity.retry_if_exception(
-        lambda e: (
-            (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
-            or isinstance(
-                e,
-                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
-            )
-        )
-    ),
+# retry=tenacity.retry_if_exception(
+#         lambda e: (
+#             # turns out that the GEO API is not very reliable
+#             # and returns 429s and 404s for valid accessions
+#             (isinstance(e, httpx.HTTPStatusError) and (e.response.status_code in {429, 404}))
+#             or isinstance(
+#                 e,
+#                 (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+#             )
+#         )
+#     ),
     before_sleep=lambda retry_state: logger.warning(
         f"GEO SOFT request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
     ),
