@@ -165,9 +165,52 @@ output_dir = provider.ensure_path("ebi_biosample")
 
 **Result**: Files written to `{OMICIDX_EXTRACT_BASE_DIR}/ebi_biosample/`
 
+## Package Structure
+
+The `ebi_biosample` package is organized into focused modules with single responsibilities:
+
+### Module Overview
+
+```
+omicidx_etl/ebi_biosample/
+├── __init__.py       # Public API exports
+├── extract.py        # Main extraction orchestration
+├── fetcher.py        # SampleFetcher class (API client)
+├── schema.py         # PyArrow schema definitions
+├── utils.py          # Utility functions (dates, filenames)
+└── README.md         # This documentation
+```
+
+### Module Responsibilities
+
+- **schema.py**: PyArrow schema definition for BioSample records
+- **fetcher.py**: API client for fetching samples from EBI
+- **utils.py**: Date range generation and filename utilities
+- **extract.py**: Main extraction logic and CLI commands
+- **__init__.py**: Public API that exports key components
+
+This modular structure improves:
+- **Testability**: Each component can be tested independently
+- **Maintainability**: Changes are localized to specific modules
+- **Readability**: Smaller, focused files are easier to understand
+- **Reusability**: Components can be imported and used separately
+
+### Usage Examples
+
+```python
+# Import specific components
+from omicidx_etl.ebi_biosample import SampleFetcher, get_biosample_schema
+
+# Or import from specific modules
+from omicidx_etl.ebi_biosample.utils import get_date_ranges
+from omicidx_etl.ebi_biosample.schema import get_biosample_schema
+```
+
 ## Code Components
 
 ### SampleFetcher Class
+
+**Location**: `fetcher.py`
 
 **Purpose**: Manages stateful pagination through EBI API results
 
@@ -185,7 +228,7 @@ output_dir = provider.ensure_path("ebi_biosample")
 - `process()`: Main loop that buffers samples in memory
 - `completed()`: Called when pagination exhausted
 
-### Helper Functions
+### Helper Functions (utils.py)
 
 #### `get_filename(start_date, end_date, tmp=True, output_directory)`
 Generates output filename for a date range.
@@ -215,6 +258,8 @@ list(get_date_ranges("2021-01-01", "2021-01-03"))
 #  (date(2021, 1, 2), date(2021, 1, 2)),
 #  (date(2021, 1, 3), date(2021, 1, 3))]
 ```
+
+### Extraction Functions (extract.py)
 
 #### `process_by_dates(start_date, end_date, output_directory)`
 Async function to process a single date range.
