@@ -79,7 +79,7 @@ async def limited_process(semaphore, start_date, end_date, output_directory: str
         await process_by_dates(start_date, end_date, output_directory)
 
 
-async def main(output_directory: UPath):
+async def main(output_directory):
     start = "2021-01-01"
     # Extract up to yesterday to avoid partial day data
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -107,7 +107,7 @@ def ebi_biosample():
 @ebi_biosample.command()
 @click.argument(
     "output_base",
-    type = str,
+    type=str,
 )
 def extract(output_base: str):
     """Extract EBI Biosample data.
