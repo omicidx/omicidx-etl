@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, date
+import tempfile
 from dateutil.relativedelta import relativedelta
 from typing import Iterable
 import tenacity
@@ -73,7 +74,7 @@ def get_filename(
     The final filename looks like
     `biosamples-2021-01-01--2021-01-01--daily.parquet`, for example.
     """
-    base = f"{output_directory}/biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
+    base = f"year={start_date.year}/month={start_date.month:02d}/day={start_date.day:02d}/data_0.parquet"
     if tmp:
         base += ".tmp"
     return base
@@ -226,45 +227,47 @@ async def process_by_dates(start_date, end_date, output_directory: str):
     )
     await fetcher.process()
 
-    tmp_filename = get_filename(start_date, end_date, tmp=True, output_directory=output_directory)
-    final_filename = get_filename(start_date, end_date, tmp=False, output_directory=output_directory)
-    
     output_path = UPath(output_directory)
-
-    output_file = output_path / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
-    output_semaphore = output_path / f"biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet.done"
+    output_path = output_path / f"year={start_date.year}" / f"month={start_date.month:02d}" / f"day={start_date.day:02d}"
+    output_file = output_path / "data_0.parquet"
+    output_semaphore = output_path / "data_0.parquet.done"
     
-    if fetcher.any_samples:
-        # Write samples to Parquet file
-        schema = get_biosample_schema()
-        table = pa.Table.from_pylist(fetcher.samples_buffer, schema=schema)
-        pq.write_table(
-            table,
-            tmp_filename,
-            compression="zstd",
-            compression_level=9
-        )
-        
+    if output_semaphore.exists():
+        logger.warning(f"Output file for {start_date} to {end_date} already exists, skipping")
+        return
 
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_filename = f"{tmp_dir}/data_0.parquet"
         
-        with output_file.open('wb') as f, open(tmp_filename, 'rb') as src:
-            shutil.copyfileobj(src, f)
+        if fetcher.any_samples:
+            # Write samples to Parquet file
+            schema = get_biosample_schema()
+            table = pa.Table.from_pylist(fetcher.samples_buffer, schema=schema)
+            pq.write_table(
+                table,
+                tmp_filename,
+                compression="zstd",
+                compression_level=9
+            )
+            
 
-        # Move temp file to final location
-        #shutil.move(tmp_filename, final_filename)
-        # Create .done file next to the data file
-        output_semaphore.touch()
-        logger.info(f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted")
-    else:
-        # No samples found - create .done with special marker
-        # Create .done file to mark day as processed (even though no data)
-        # This prevents re-checking empty days
-        done_file = UPath(final_filename + ".done")
-        done_file.touch()
-        # Write metadata to indicate no samples
-        done_file.write_text("NO_SAMPLES\n")
-        logger.info(f"Finished processing {start_date} to {end_date}: No samples found")
-    UPath(tmp_filename).unlink(missing_ok=True)
+            
+            with output_file.open('wb') as f, open(tmp_filename, 'rb') as src:
+                shutil.copyfileobj(src, f)
+
+            # Move temp file to final location
+            #shutil.move(tmp_filename, final_filename)
+            # Create .done file next to the data file
+            output_semaphore.write_text(f"Processed {fetcher.processed_count} samples\n")
+            logger.info(f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted")
+        else:
+            # No samples found - create .done with special marker
+            # Create .done file to mark day as processed (even though no data)
+            # This prevents re-checking empty days
+            # Write metadata to indicate no samples
+            output_semaphore.write_text("NO_SAMPLES\n")
+            logger.info(f"Finished processing {start_date} to {end_date}: No samples found")
+        UPath(tmp_filename).unlink(missing_ok=True)
     
 
 
@@ -287,9 +290,11 @@ async def main(output_directory: UPath):
 
     async with anyio.create_task_group() as task_group:
         for start_date, end_date in get_date_ranges(start, end):
-            if not UPath(
-                get_filename(start_date, end_date, tmp=False, output_directory=str(output_directory)) + ".done"
-            ).exists(): # and current_date < end_date: # repeat current month
+            output_path = UPath(output_directory)
+            output_path = output_path / f"year={start_date.year}" / f"month={start_date.month:02d}" / f"day={start_date.day:02d}"
+            output_file = output_path / "data_0.parquet"
+            output_semaphore = output_path / "data_0.parquet.done"
+            if not output_semaphore.exists(): # Only process if not already done
                 logger.info(f"Scheduling processing for {start_date} to {end_date}")
                 task_group.start_soon(limited_process, semaphore, start_date, end_date, str(output_directory))
 
@@ -311,7 +316,7 @@ def extract(output_base: str):
     """
     from omicidx_etl.path_provider import get_path_provider
     
-    output_dir = get_path_provider(output_base).ensure_path('ebi_biosample','raw')
+    output_dir = get_path_provider(output_base).ensure_path('raw', 'ebi_biosample')
     
 
     logger.info(f"Using output directory: {output_dir}")
