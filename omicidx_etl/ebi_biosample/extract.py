@@ -16,6 +16,7 @@ import pyarrow.parquet as pq
 
 from .schema import get_biosample_schema
 
+CONCURRENCY_LIMIT = 20
 
 BASEURL = "https://www.ebi.ac.uk/biosamples/samples"
 
@@ -219,7 +220,7 @@ async def main(output_directory: UPath):
     # Extract up to yesterday to avoid partial day data
     yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     end = yesterday
-    semaphore = anyio.Semaphore(20)  # Limit to 20 concurrent tasks
+    semaphore = anyio.Semaphore(CONCURRENCY_LIMIT)  # Limit to 20 concurrent tasks
 
     logger.info(f"Starting EBI Biosample extraction from {start} to {end}")
     logger.info(f"Extracting up to yesterday to ensure complete days")
