@@ -1,16 +1,10 @@
--- GEOmetadb compatibility view: Supplemental files from GEO Series and Samples
--- Unnests supplemental file arrays and extracts filenames
-MODEL (
-    name geometadb.geo_supplemental_files,
-    kind VIEW
-);
 
 WITH supp_file AS (
     SELECT
         accession,
         'gse' AS accession_type,
         UNNEST(supplemental_files) AS supplemental_file
-    FROM raw.stg_geo_series
+    FROM raw.src_geo_series
 
     UNION ALL
 

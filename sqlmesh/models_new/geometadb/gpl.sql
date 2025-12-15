@@ -1,9 +1,4 @@
--- GEOmetadb compatibility view: GPL (GEO Platforms)
--- Provides backward-compatible schema matching the original GEOmetadb SQLite database
-MODEL (
-    name geometadb.gpl,
-    kind VIEW
-);
+
 
 SELECT
     title,

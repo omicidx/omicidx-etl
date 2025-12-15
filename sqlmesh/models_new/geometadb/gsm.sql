@@ -1,9 +1,3 @@
--- GEOmetadb compatibility view: GSM (GEO Samples)
--- Provides backward-compatible schema matching the original GEOmetadb SQLite database
-MODEL (
-    name geometadb.gsm,
-    kind VIEW
-);
 
 SELECT
     title,

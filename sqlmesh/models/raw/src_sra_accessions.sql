@@ -28,4 +28,4 @@ SELECT
     BioProject,
     ReplacedBy
 FROM
-    read_parquet(@data_root || '/sra/sra_accessions.parquet')
+    read_csv_auto('https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab', nullstr='-')

@@ -8,4 +8,4 @@ MODEL (
 SELECT DISTINCT
     accession AS gse,
     UNNEST(sample_id) AS gsm
-FROM bronze.stg_geo_series
+FROM raw.src_geo_series

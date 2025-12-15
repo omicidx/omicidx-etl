@@ -1,0 +1,1 @@
+copy (select * from read_csv_auto('https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab', delim='\t', nullstr='-')) to 's3://omicidx/sra/raw/accessions' (format parquet, compression zstd, file_size_bytes '500MB');

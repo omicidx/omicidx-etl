@@ -1,15 +1,10 @@
--- GEOmetadb compatibility view: GSE (GEO Series)
--- Provides backward-compatible schema matching the original GEOmetadb SQLite database
-MODEL (
-    name geometadb.gse,
-    kind VIEW
-);
+
 
 WITH has_geo_computed_rnaseq AS (
     SELECT
         r.accession
     FROM
-        raw.src_geo_gse_with_rna_set_counts r
+        raw.src_geo_gse_with_rna_seq_counts r
 )
 SELECT
     g.accession AS gse,
