@@ -6,6 +6,7 @@ from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
 import click
 import orjson
+import polars as pl
 
 from ..config import settings
 
@@ -248,7 +249,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
         f"Entrez API request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
     ),
 )
-def gse_with_rna_seq_counts() -> list[dict[str, str]]:
+def gse_with_rna_seq_counts() -> pl.DataFrame:
     """GEO supplies a hidden filter for getting GSEs with RNA-seq counts
     
     The filter is at the level of GSEs, not GSMs. This function just 
@@ -284,9 +285,8 @@ def gse_with_rna_seq_counts() -> list[dict[str, str]]:
             offset += 5000
             import time
             time.sleep(0.5)  # to avoid hitting the rate limit
-    # dict of {"accession": <GSE_ACCESSION>}
-    # ready for polars.from_pylist() or writing out as json.
-    return gses_with_rna_seq_counts
+    # list of string GSE_ACCESSIONs
+    return pl.DataFrame({"accession": gses_with_rna_seq_counts})
 
 
 
@@ -370,12 +370,13 @@ async def main():
     print(os.environ)
     
     gses_with_rna_seq = gse_with_rna_seq_counts()
-    outfile = OUTPUT_PATH / "gse_with_rna_seq_counts.jsonl.gz"
+    outfile = OUTPUT_PATH / "gse_with_rna_seq_counts.parquet"
     
-    with gzip.open(outfile.open('wb'), "wb") as f:
-        for item in gses_with_rna_seq:
-            f.write(orjson.dumps(item) + b"\n")
-    logger.info(f"Wrote {len(gses_with_rna_seq)} GSEs with RNA-seq counts to {OUTPUT_PATH / 'gse_with_rna_seq_counts.jsonl.gz'}")
+    # Write to a parquet file
+    with outfile.open("wb") as f:
+        gses_with_rna_seq.write_parquet(f, use_pyarrow=True, compression="zstd")
+    logger.info(f"Wrote {len(gses_with_rna_seq)} GSEs with RNA-seq counts to {outfile}")
+    
     start = "2005-01-01"
     end = date.today().strftime("%Y-%m-%d")
     ranges = get_monthly_ranges(start, end)
