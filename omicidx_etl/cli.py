@@ -12,7 +12,6 @@ from omicidx_etl.etl.europepmc_textmined import europepmc
 from omicidx_etl.ebi_biosample.extract import ebi_biosample
 from .nih_reporter import nih_reporter
 from .status import status
-from .catalog import catalog
 from omicidx_etl.sra.cli import sra
 
 
@@ -33,7 +32,6 @@ cli.add_command(pubmed)
 cli.add_command(europepmc)
 cli.add_command(nih_reporter)
 cli.add_command(ebi_biosample)
-cli.add_command(catalog)
 
 if __name__ == "__main__":
     cli()
