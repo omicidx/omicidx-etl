@@ -5,10 +5,8 @@ from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
 import click
-import orjson
 import polars as pl
 
-from ..config import settings
 
 import gzip
 
