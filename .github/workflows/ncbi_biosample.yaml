@@ -32,5 +32,5 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run GEO extraction
+      - name: Run extraction
         run: uv run oidx biosample extract ${{ secrets.OMICIDX_BASE_PATH }}/biosample
