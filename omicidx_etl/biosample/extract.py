@@ -20,7 +20,7 @@ BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
 OUTPUT_SUFFIX = ".parquet"
 
 # Batch sizes optimized for your 512GB RAM
-BIOSAMPLE_BATCH_SIZE = 2_000_000  # Much larger than current 1M
+BIOSAMPLE_BATCH_SIZE = 1_000_000  # This size works well within memory limits on GH actions
 BIOPROJECT_BATCH_SIZE = 500_000  # Much larger than current 100k
 
 @tenacity.retry(
