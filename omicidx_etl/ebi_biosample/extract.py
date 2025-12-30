@@ -14,7 +14,19 @@ from loguru import logger
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+
 from .schema import get_biosample_schema
+
+logger.add(
+    "/tmp/file_logs/app_{time}.jsonl",  # Use {time} in filename for unique logs
+    rotation="500 MB",
+    serialize=True,
+    retention="30 days",
+    enqueue=True, # Recommended for thread safety
+    level="DEBUG", # Set the minimum logging level
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
+)
+
 
 CONCURRENCY_LIMIT = 20
 
@@ -24,11 +36,11 @@ BASEURL = "https://www.ebi.ac.uk/biosamples/samples"
 class SampleFetcher:
     def __init__(
         self,
+        start_date: date,
+        end_date: date,
+        output_directory: str,
         cursor: str = "*",
         size: int = 200,
-        start_date: date = date.today(),
-        end_date: date = date.today(),
-        output_directory: str = ''
     ):
         self.cursor = cursor
         self.size = size
@@ -66,7 +78,7 @@ class SampleFetcher:
             "size": self.size,
             "filter": filt,
         }
-        logger.debug(f"Performing request to EBI API: {self.full_url if self.full_url is not None else self.base_url} with params {params}")
+        logger.debug(f"Fetching samples", url = {self.full_url if self.full_url is not None else self.base_url}, params = params)
         async with httpx.AsyncClient() as client:
             if self.full_url is not None:
                 response = await client.get(self.full_url, timeout=40)
@@ -117,7 +129,7 @@ class SampleFetcher:
             self.samples_buffer.append(sample)
             self.processed_count += 1
             if self.processed_count % 1000 == 0:
-                logger.debug(f"Fetched {self.processed_count} samples so far for date range {self.start_date} to {self.end_date}")
+                logger.debug("Fetching samples...", processed_count=self.processed_count, start_date=self.start_date, end_date=self.end_date)
 
     def completed(self):
         """Finalize the fetching process.
@@ -171,7 +183,7 @@ async def process_by_dates(start_date, end_date, output_directory: str):
     output_semaphore = output_path / "data_0.parquet.done"
     
     if output_semaphore.exists():
-        logger.warning(f"Output file for {start_date} to {end_date} already exists, skipping")
+        logger.info("Skipping already processed date range: {start_date} to {end_date}", start_date=start_date, end_date=end_date)
         return
 
     with tempfile.TemporaryDirectory() as tmp_dir:

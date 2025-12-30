@@ -27,8 +27,10 @@ def sra():
 @click.option(
     "--dest",
     type=str,
-    required=True,
-    help="Output destination (e.g., s3://bucket/sra or /local/path/sra)",
+    envvar="OMICIDX_SRA_DEST",
+    required=False,
+    default=None,
+    help="Output destination (e.g., s3://bucket/sra or /local/path/sra). Can be set via OMICIDX_SRA_DEST env var.",
 )
 @click.option(
     "--since",
@@ -65,8 +67,8 @@ def sra():
     default=None,
     help="Limit number of entries to process (useful for testing)",
 )
-def sync(
-    dest: str,
+def extract(
+    dest: Optional[str],
     since: Optional[date],
     until: Optional[date],
     chunk_size: int,
@@ -75,12 +77,18 @@ def sync(
     max_entries: Optional[int],
 ):
     """
-    Sync SRA mirror entries to parquet format.
-    
+    Extract SRA metadata from NCBI mirror to parquet format.
+
     Downloads and processes the latest SRA mirror, filtering by date and entity type.
     """
     log = get_logger(__name__)
-    
+
+    # If dest not provided, use PathProvider default
+    if dest is None:
+        provider = get_path_provider()
+        dest = str(provider.get_path("sra"))
+        log.info(f"Using default destination from PathProvider: {dest}")
+
     try:
         log.info(
             "Starting SRA sync",
@@ -164,22 +172,30 @@ def sync(
 @click.option(
     "--dest",
     type=str,
-    required=True,
-    help="Output destination (e.g., s3://bucket/sra or /local/path/sra)",
+    envvar="OMICIDX_SRA_DEST",
+    required=False,
+    default=None,
+    help="Output destination (e.g., s3://bucket/sra or /local/path/sra). Can be set via OMICIDX_SRA_DEST env var.",
 )
 @click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be cleaned up without deleting",
 )
-def cleanup(dest: str, dry_run: bool):
+def cleanup(dest: Optional[str], dry_run: bool):
     """
     Clean up old SRA mirror entries.
-    
+
     Removes all entries that are no longer in the current batch.
     """
     log = get_logger(__name__)
-    
+
+    # If dest not provided, use PathProvider default
+    if dest is None:
+        provider = get_path_provider()
+        dest = str(provider.get_path("sra"))
+        log.info(f"Using default destination from PathProvider: {dest}")
+
     try:
         log.info("Starting SRA cleanup", dest=dest, dry_run=dry_run)
         
@@ -244,10 +260,10 @@ def list_entries_json(entries: list[SRAMirrorEntry]) -> str:
     is_flag=True,
     help="Output entries in JSON format",
 )
-def list_entries(json: bool):    
+def list_entries(json: bool):
     """
     List all SRA mirror entries.
-    
+
     Displays the current and old entries in a tabular format.
     """
     entries = get_sra_mirror_entries()
@@ -255,3 +271,7 @@ def list_entries(json: bool):
         click.echo(list_entries_json(entries))
     else:
         click.echo(list_entries_text(entries))
+
+
+if __name__ == "__main__":
+    sra()

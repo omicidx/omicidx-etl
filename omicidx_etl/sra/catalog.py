@@ -5,6 +5,8 @@ This module provides the SRACatalog class for managing the processing and cleanu
 of SRA mirror entries.
 """
 from typing import List
+from datetime import datetime
+import json
 
 from upath import UPath
 
@@ -31,6 +33,10 @@ class SRACatalog:
         """
         self.path_provider = path_provider
         self.log = get_logger(__name__)
+
+    def _done_marker_path(self, mirror_entry: SRAMirrorEntry) -> UPath:
+        """Return the marker path indicating this entry is processed."""
+        return self.parquet_dir_for_mirror_entry(mirror_entry) / "data.done"
     
     def path_for_mirror_entry(self, mirror_entry: SRAMirrorEntry) -> UPath:
         """
@@ -163,15 +169,38 @@ class SRACatalog:
         )
         
         out_dir = self.parquet_dir_for_mirror_entry(mirror_entry)
+        done_marker = self._done_marker_path(mirror_entry)
+
+        if done_marker.exists():
+            log.info(
+                "Skipping entry; done marker exists",
+                marker=str(done_marker),
+                url=mirror_entry.url,
+            )
+            return
         
         with log_operation(log, "process_entry", url=mirror_entry.url):
-            process_mirror_entry_to_parquet_parts(
+            written_parts = process_mirror_entry_to_parquet_parts(
                 url=mirror_entry.url,
                 out_dir=out_dir,
                 entity=mirror_entry.entity,
                 # files will be named data_000000.parquet, data_000001.parquet, etc.
                 basename = "data"
             )
+
+            # Create completion marker with a small amount of metadata
+            out_dir.mkdir(parents=True, exist_ok=True)
+            marker_payload = {
+                "completed_at": datetime.utcnow().isoformat() + "Z",
+                "url": mirror_entry.url,
+                "entity": mirror_entry.entity,
+                "date": str(mirror_entry.date),
+                "is_full": mirror_entry.is_full,
+                "parts_written": len(written_parts),
+            }
+            with done_marker.open("w") as fp:
+                json.dump(marker_payload, fp)
+            log.info("Wrote done marker", marker=str(done_marker))
     
     def process(self, mirror_entries: List[SRAMirrorEntry]) -> None:
         """

@@ -58,7 +58,7 @@ class PathProviderConfig(BaseSettings):
     """Configuration for PathProvider resource."""
 
     model_config = SettingsConfigDict(
-        env_prefix="OMICIDX_EXTRACT_",
+        env_prefix="OMICIDX_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="allow",
