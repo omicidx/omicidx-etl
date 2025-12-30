@@ -13,5 +13,5 @@ jobs:
     uses: ./.github/workflows/base_runner.yaml
     with:
       command_to_run: |
-        uv run oidx biosample extract ${{ secrets.OMICIDX_BASE_PATH }}/biosample
+        "uv run oidx biosample extract ${{ secrets.OMICIDX_BASE_PATH }}/biosample"
     secrets: inherit
