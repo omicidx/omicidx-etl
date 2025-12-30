@@ -34,4 +34,4 @@ jobs:
         run: uv sync
 
       - name: Run SRA extraction
-        run: uv run oidx sraextract
+        run: uv run oidx sra extract
