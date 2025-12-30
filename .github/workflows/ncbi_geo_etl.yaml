@@ -15,7 +15,6 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
       AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
       AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
       OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
