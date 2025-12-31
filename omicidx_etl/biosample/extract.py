@@ -103,6 +103,15 @@ def _extract_entity(
         file_counter = 1
         current_batch = []
 
+        stop_event = threading.Event()
+        heartbeat_interval = 60
+
+        def _log_heartbeat():
+            while not stop_event.wait(heartbeat_interval):
+                logger.info(
+                    f"Heartbeat: {entity} parsed {obj_counter} records so far"
+                )
+
         def _write_batch():
             nonlocal current_batch, file_counter, output_files
             if current_batch:
@@ -121,18 +130,25 @@ def _extract_entity(
         open_func = gzip.open if use_gzip_input else open
         mode = "rb"
 
-        with open_func(downloaded_file.name, mode) as input_file:
-            for obj in parser_class(input_file, validate_with_schema=False):
-                current_batch.append(obj)
-                obj_counter += 1
+        heartbeat_thread = threading.Thread(target=_log_heartbeat, daemon=True)
+        heartbeat_thread.start()
 
-                # Write batch when it reaches batch_size
-                if len(current_batch) >= batch_size:
-                    _write_batch()
+        try:
+            with open_func(downloaded_file.name, mode) as input_file:
+                for obj in parser_class(input_file, validate_with_schema=False):
+                    current_batch.append(obj)
+                    obj_counter += 1
 
-        # Write final batch if it has data
-        if current_batch:
-            _write_batch()
+                    # Write batch when it reaches batch_size
+                    if len(current_batch) >= batch_size:
+                        _write_batch()
+
+            # Write final batch if it has data
+            if current_batch:
+                _write_batch()
+        finally:
+            stop_event.set()
+            heartbeat_thread.join(timeout=1)
 
     logger.info(
         f"Completed {entity} extraction: {obj_counter} records, {len(output_files)} files"
