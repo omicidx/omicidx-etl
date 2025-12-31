@@ -18,6 +18,7 @@ jobs:
       AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
       AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
       OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
+      PYTHONUNBUFFERED: 1 # Ensure real-time logging output
 
     steps:
 
