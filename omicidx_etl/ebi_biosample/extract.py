@@ -30,7 +30,8 @@ logger.add(
 )
 
 
-CONCURRENCY_LIMIT = 20
+# CONCURRENCY_LIMIT = 20  # Limit to 20 concurrent tasks
+CONCURRENCY_LIMIT = 2 # For testing in GitHub Actions, reduce to 2
 
 BASEURL = "https://www.ebi.ac.uk/biosamples/samples"
 
