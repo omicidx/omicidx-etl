@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, date
+import time
+import threading
 import tempfile
 from dateutil.relativedelta import relativedelta
 from typing import Iterable
@@ -227,6 +229,19 @@ async def limited_process(semaphore, start_date, end_date, output_directory: str
         await process_by_dates(start_date, end_date, output_directory)
 
 
+async def heartbeat(seconds: int = 300):
+    """Log heartbeat every 5 minutes to prevent GitHub Actions timeout.
+    
+    Needed in GitHub Actions to prevent timeouts.
+    Github Actions may terminate jobs that do not produce output
+    for a certain period of time (10 minutes). 
+    """
+    while True:
+        await anyio.sleep(seconds)  # Sleep for 5 minutes
+        logger.info("Heartbeat: EBI Biosample extraction is running.")
+
+
+
 async def main(output_directory: UPath):
     start = "2021-01-01"
     # Extract up to yesterday to avoid partial day data
@@ -239,6 +254,7 @@ async def main(output_directory: UPath):
     logger.info(f"Output directory: {output_directory}")
 
     async with anyio.create_task_group() as task_group:
+        task_group.start_soon(heartbeat, 300)  # Start heartbeat task
         for start_date, end_date in get_date_ranges(start, end):
             output_path = UPath(output_directory)
             output_path = output_path / f"year={start_date.year}" / f"month={start_date.month:02d}" / f"day={start_date.day:02d}"
@@ -247,6 +263,8 @@ async def main(output_directory: UPath):
             if not output_semaphore.exists(): # Only process if not already done
                 logger.info(f"Scheduling processing for {start_date} to {end_date}")
                 task_group.start_soon(limited_process, semaphore, start_date, end_date, str(output_directory))
+
+
 
 
 @click.group()
