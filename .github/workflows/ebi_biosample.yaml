@@ -20,6 +20,7 @@ jobs:
       AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
       OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
       PYTHONUNBUFFERED: 1 # Ensure real-time logging output
+      LOGURU_LEVEL: DEBUG
 
     steps:
       - uses: 'actions/checkout@v4'
