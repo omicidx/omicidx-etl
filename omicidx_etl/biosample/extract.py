@@ -22,8 +22,8 @@ BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
 OUTPUT_SUFFIX = ".parquet"
 
 # Batch sizes optimized for your 512GB RAM
-BIOSAMPLE_BATCH_SIZE = 500_000  # This size works well within memory limits on GH actions
-BIOPROJECT_BATCH_SIZE = 500_000  # Much larger than current 100k
+BIOSAMPLE_BATCH_SIZE = 250_000  # This size works well within memory limits on GH actions
+BIOPROJECT_BATCH_SIZE = 250_000  # Much larger than current 100k
 
 @tenacity.retry(
     wait=tenacity.wait_exponential(multiplier=1, min=4, max=30),
@@ -186,7 +186,7 @@ def extract(output_base: str):
 
 if __name__ == "__main__":
     provider = get_path_provider("s3://omicidx")
-    base_path = provider.get_path("biosample", "raw")
+    base_path = provider.get_path('ncbi_biosample')
 
     extract_all(base_path)  # For direct CLI testing
     exit(0)
