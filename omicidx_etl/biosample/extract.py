@@ -156,25 +156,11 @@ def _extract_entity(
     return output_files
 
 
-def heartbeat(interval_seconds: int):
-    """Log a heartbeat message at regular intervals to indicate progress."""
-    def _log_heartbeat():
-        while True:
-            logger.info("Heartbeat: extraction is still in progress...")
-            time.sleep(interval_seconds)
-
-    thread = threading.Thread(target=_log_heartbeat, daemon=True)
-    thread.start()
-
-
 
 def extract_all(output_dir: UPath) -> dict[str, list[UPath]]:
     """Extract both biosample and bioproject."""
     results = {}
     
-    # start heartbeat logging
-    heartbeat(60)  # Log every 1 minute
-
     for entity_func, entity_name in [
         (extract_bioproject, "bioproject"),
         (extract_biosample, "biosample"),
