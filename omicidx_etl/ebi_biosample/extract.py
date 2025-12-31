@@ -30,7 +30,7 @@ logger.add(
 )
 
 
-CONCURRENCY_LIMIT = 20  # Limit to 20 concurrent tasks
+CONCURRENCY_LIMIT = 4  # Limit to 20 concurrent tasks
 
 BASEURL = "https://www.ebi.ac.uk/biosamples/samples"
 
