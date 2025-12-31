@@ -6,7 +6,7 @@ import time
 import httpx
 import tempfile
 import gzip
-import json
+import orjson
 import shutil
 from upath import UPath
 from pathlib import Path
@@ -98,13 +98,16 @@ def _extract_entity(
         url_download(url, downloaded_file.name)
 
         obj_counter = 0
+        start_time = time.time()
 
         stop_event = threading.Event()
 
         def _log_heartbeat():
             while not stop_event.wait(HEARTBEAT_INTERVAL):
+                elapsed = time.time() - start_time
+                rps = obj_counter / elapsed if elapsed > 0 else 0.0
                 logger.info(
-                    f"Heartbeat: {entity} parsed {obj_counter} records so far"
+                    f"Heartbeat: {entity} parsed {obj_counter} records in {elapsed:.1f}s ({rps:.1f} rec/s)"
                 )
 
         # Open input file
@@ -124,19 +127,15 @@ def _extract_entity(
 
             try:
                 with open_func(downloaded_file.name, mode) as input_file, gzip.open(
-                    tmp_out_path, "wt", encoding="utf-8"
+                    tmp_out_path, "wb"
                 ) as out_f:
+                    # the parser yields dicts unless validate_with_schema=True
+                    # we skip validation for performance
                     for obj in parser_class(input_file, validate_with_schema=False):
-                        # Try common serialization paths
-                        if hasattr(obj, "model_dump_json"):
-                            line = obj.model_dump_json()
-                        elif hasattr(obj, "model_dump"):
-                            line = json.dumps(obj.model_dump())
-                        else:
-                            line = json.dumps(obj)
+                        line = orjson.dumps(obj)
 
                         out_f.write(line)
-                        out_f.write("\n")
+                        out_f.write(b"\n")
 
                         obj_counter += 1
 
