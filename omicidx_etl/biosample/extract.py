@@ -6,6 +6,8 @@ import time
 import httpx
 import tempfile
 import gzip
+import json
+import shutil
 from upath import UPath
 from pathlib import Path
 from omicidx.biosample import BioSampleParser, BioProjectParser
@@ -19,11 +21,10 @@ logger = get_logger(__name__)
 # Configuration
 BIO_SAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
 BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
-OUTPUT_SUFFIX = ".parquet"
+OUTPUT_SUFFIX = ".jsonl.gz"
 
-# Batch sizes optimized for your 512GB RAM
-BIOSAMPLE_BATCH_SIZE = 250_000  # This size works well within memory limits on GH actions
-BIOPROJECT_BATCH_SIZE = 250_000  # Much larger than current 100k
+# Heartbeat interval (seconds)
+HEARTBEAT_INTERVAL = 60
 
 @tenacity.retry(
     wait=tenacity.wait_exponential(multiplier=1, min=4, max=30),
@@ -61,7 +62,6 @@ def extract_biosample(output_dir: UPath) -> list[UPath]:
         url=BIO_SAMPLE_URL,
         entity="biosample",
         output_dir=output_dir,
-        batch_size=BIOSAMPLE_BATCH_SIZE,
         parser_class=BioSampleParser,
         use_gzip_input=True,
     )
@@ -73,7 +73,6 @@ def extract_bioproject(output_dir: UPath) -> list[UPath]:
         url=BIO_PROJECT_URL,
         entity="bioproject",
         output_dir=output_dir,
-        batch_size=BIOPROJECT_BATCH_SIZE,
         parser_class=BioProjectParser,
         use_gzip_input=False,
     )
@@ -83,48 +82,30 @@ def _extract_entity(
     url: str,
     entity: str,
     output_dir: UPath,
-    batch_size: int,
     parser_class,
     use_gzip_input: bool,
 ) -> list[UPath]:
-    """Extract a single entity type to parquet files."""
+    """Extract a single entity type to gzipped JSONL (streaming)."""
     output_dir = output_dir / entity / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     cleanup_old_files(output_dir, entity)
 
     logger.info(f"Downloading {url}")
 
-    output_files = []
+    output_files: list[UPath] = []
 
     with tempfile.NamedTemporaryFile() as downloaded_file:
         url_download(url, downloaded_file.name)
 
         obj_counter = 0
-        file_counter = 1
-        current_batch = []
 
         stop_event = threading.Event()
-        heartbeat_interval = 60
 
         def _log_heartbeat():
-            while not stop_event.wait(heartbeat_interval):
+            while not stop_event.wait(HEARTBEAT_INTERVAL):
                 logger.info(
                     f"Heartbeat: {entity} parsed {obj_counter} records so far"
                 )
-
-        def _write_batch():
-            nonlocal current_batch, file_counter, output_files
-            if current_batch:
-                output_path = output_dir / f"data_{file_counter}.parquet"
-                with output_path.open("wb") as f:
-                    import polars as pl
-
-                    df = pl.DataFrame(current_batch, infer_schema_length=1000000)
-                    df.write_parquet(f)
-                output_files.append(output_path)
-                logger.info(f"Wrote {len(current_batch)} records to {output_path}")
-                current_batch = []
-                file_counter += 1
 
         # Open input file
         open_func = gzip.open if use_gzip_input else open
@@ -133,19 +114,40 @@ def _extract_entity(
         heartbeat_thread = threading.Thread(target=_log_heartbeat, daemon=True)
         heartbeat_thread.start()
 
+        output_path = output_dir / f"{entity}{OUTPUT_SUFFIX}"
+
         try:
-            with open_func(downloaded_file.name, mode) as input_file:
-                for obj in parser_class(input_file, validate_with_schema=False):
-                    current_batch.append(obj)
-                    obj_counter += 1
+            with tempfile.NamedTemporaryFile(
+                mode="wb", delete=False, suffix=OUTPUT_SUFFIX
+            ) as tmp_out:
+                tmp_out_path = Path(tmp_out.name)
 
-                    # Write batch when it reaches batch_size
-                    if len(current_batch) >= batch_size:
-                        _write_batch()
+            try:
+                with open_func(downloaded_file.name, mode) as input_file, gzip.open(
+                    tmp_out_path, "wt", encoding="utf-8"
+                ) as out_f:
+                    for obj in parser_class(input_file, validate_with_schema=False):
+                        # Try common serialization paths
+                        if hasattr(obj, "model_dump_json"):
+                            line = obj.model_dump_json()
+                        elif hasattr(obj, "model_dump"):
+                            line = json.dumps(obj.model_dump())
+                        else:
+                            line = json.dumps(obj)
 
-            # Write final batch if it has data
-            if current_batch:
-                _write_batch()
+                        out_f.write(line)
+                        out_f.write("\n")
+
+                        obj_counter += 1
+
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with tmp_out_path.open("rb") as src, output_path.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+
+                output_files.append(output_path)
+                logger.info(f"Wrote {obj_counter} records to {output_path}")
+            finally:
+                tmp_out_path.unlink(missing_ok=True)
         finally:
             stop_event.set()
             heartbeat_thread.join(timeout=1)
@@ -183,11 +185,5 @@ def extract(output_base: str):
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)
 
-
 if __name__ == "__main__":
-    provider = get_path_provider("s3://omicidx")
-    base_path = provider.get_path('ncbi_biosample')
-
-    extract_all(base_path)  # For direct CLI testing
-    exit(0)
-    extract()  # For direct CLI testing
+    extract()
