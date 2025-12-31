@@ -20,7 +20,7 @@ BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
 OUTPUT_SUFFIX = ".parquet"
 
 # Batch sizes optimized for your 512GB RAM
-BIOSAMPLE_BATCH_SIZE = 1_000_000  # This size works well within memory limits on GH actions
+BIOSAMPLE_BATCH_SIZE = 500_000  # This size works well within memory limits on GH actions
 BIOPROJECT_BATCH_SIZE = 500_000  # Much larger than current 100k
 
 @tenacity.retry(
@@ -39,6 +39,7 @@ def url_download(url: str, download_filename: str):
 
                 for chunk in response.iter_bytes():
                     download_file.write(chunk)
+        logger.info(f"Completed download of {url}")
 
     except Exception as e:
         logger.error(f"Error downloading {url}: {e}")
