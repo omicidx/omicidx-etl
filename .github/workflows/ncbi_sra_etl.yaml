@@ -34,4 +34,4 @@ jobs:
         run: uv sync
 
       - name: Run SRA extraction
-        run: uv run oidx sra extract
+        run: uv run oidx sra extract --dest s3://$OMICIDX_BASE_PATH/sra/raw
