@@ -36,7 +36,7 @@ dependencies = [
     "quarto>=0.1.0",
     "matplotlib>=3.10.8",
     "aioboto3>=15.5.0",
-    "sf-hamilton[sdk,ui]>=1.89.0",
+    "sf-hamilton[lsp,sdk,ui]>=1.89.0",
 ]
 
 [project.optional-dependencies]
