@@ -3007,7 +3007,7 @@ dependencies = [
     { name = "quarto" },
     { name = "rich" },
     { name = "s3fs" },
-    { name = "sf-hamilton", extra = ["sdk", "ui"] },
+    { name = "sf-hamilton", extra = ["lsp", "sdk", "ui"] },
     { name = "sqlglot" },
     { name = "sqlmesh", extra = ["lsp"] },
     { name = "tqdm" },
@@ -3052,7 +3052,7 @@ requires-dist = [
     { name = "quarto", specifier = ">=0.1.0" },
     { name = "rich", specifier = ">=13.7.1,<14.0.0" },
     { name = "s3fs", specifier = ">=2023.0.0,<2024.0.0" },
-    { name = "sf-hamilton", extras = ["sdk", "ui"], specifier = ">=1.89.0" },
+    { name = "sf-hamilton", extras = ["lsp", "sdk", "ui"], specifier = ">=1.89.0" },
     { name = "sqlglot", specifier = ">=27.8.0" },
     { name = "sqlmesh", extras = ["duckdb", "lsp"], specifier = ">=0.211.2" },
     { name = "tqdm", extras = ["asyncio"], specifier = ">=4.67.1" },
@@ -4907,11 +4907,31 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+lsp = [
+    { name = "sf-hamilton-lsp" },
+]
 sdk = [
     { name = "sf-hamilton-sdk" },
 ]
 ui = [
     { name = "sf-hamilton-ui" },
+]
+visualization = [
+    { name = "graphviz" },
+    { name = "networkx" },
+]
+
+[[package]]
+name = "sf-hamilton-lsp"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pygls" },
+    { name = "sf-hamilton", extra = ["visualization"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/db/e2/36ebdc97c1feecf3aec4cf12b0f2b09e0bda6caab8a7c8ce8b4faf15e011/sf_hamilton_lsp-0.1.0.tar.gz", hash = "sha256:836ded310e8fbfca6b67f066049e3ed2789179717bd8c0989b59ec7cecabb800", size = 5374, upload-time = "2024-06-27T15:37:32.776Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/a0/faba0455eb66eadb64d40edb870faee8e7870eed437bdb6f01255a90e579/sf_hamilton_lsp-0.1.0-py3-none-any.whl", hash = "sha256:6f5f706a748be800dbdb9632b91205bb82d2033bd4553bf695f5ceef50a163ad", size = 5632, upload-time = "2024-06-27T15:37:31.34Z" },
 ]
 
 [[package]]
