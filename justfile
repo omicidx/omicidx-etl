@@ -34,12 +34,12 @@ clean:
 # Run `oidx sra extract`
 [group('oidx')]
 sra-extract:
-	uv run oidx sra extract ${OMICIDX_DATA_ROOT}
+	uv run oidx sra sync --dest ${OMICIDX_DATA_ROOT}
 
 # Run `oidx geo extract`
 [group('oidx')]
 geo-extract:
-	uv run oidx geo extract ${OMICIDX_DATA_ROOT}
+	uv run oidx geo extract # ${OMICIDX_DATA_ROOT}
 
 # Run `oidx biosample extract`
 [group('oidx')]
@@ -70,4 +70,4 @@ pubmed-extract:
 
 # oidx commands
 [group('oidx')]
-extract-all: sra-extract geo-extract biosample-extract europepmc-extract pubmed-extract
+extract-all: geo-extract biosample-extract europepmc-extract pubmed-extract
