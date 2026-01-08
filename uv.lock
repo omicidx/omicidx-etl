@@ -3867,8 +3867,8 @@ wheels = [
 
 [[package]]
 name = "pubmed-parser"
-version = "0.1.dev365+g01b1fadec"
-source = { git = "https://github.com/seandavi/pubmed_parser#01b1fadecaec3df06da006199b9f9cfb9ebb3ac6" }
+version = "0.1.dev370+g884739667"
+source = { git = "https://github.com/seandavi/pubmed_parser#884739667fee2f6c2b77b78b7d21d60a470681e2" }
 dependencies = [
     { name = "lxml" },
     { name = "requests" },
