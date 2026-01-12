@@ -15,6 +15,9 @@ import click
 from omicidx_etl.log import get_logger
 from omicidx_etl.path_provider import get_path_provider
 import tenacity
+from datetime import datetime
+
+from .asset_metadata import AssetMetadata
 
 logger = get_logger(__name__)
 
@@ -31,7 +34,7 @@ HEARTBEAT_INTERVAL = 60
     retry=tenacity.retry_if_exception_type(httpx.RequestError),
     stop=tenacity.stop_after_attempt(5),
 )
-def url_download(url: str, download_filename: str):
+def url_download(url: str, download_filename: str) -> None:
     """Download a file from a URL to a local destination."""
 
     try:
@@ -49,14 +52,14 @@ def url_download(url: str, download_filename: str):
         raise
 
 
-def cleanup_old_files(output_dir: Path, entity: str):
+def cleanup_old_files(output_dir: Path, entity: str) -> None:
     """Remove old output files for an entity."""
     for file_path in output_dir.glob(f"{entity}*{OUTPUT_SUFFIX}"):
         file_path.unlink()
         logger.info(f"Removed old file: {file_path}")
 
 
-def extract_biosample(output_dir: UPath) -> list[UPath]:
+def extract_biosample(output_dir: UPath) -> AssetMetadata:
     """Extract biosample data to NDJSON files."""
     return _extract_entity(
         url=BIO_SAMPLE_URL,
@@ -67,7 +70,7 @@ def extract_biosample(output_dir: UPath) -> list[UPath]:
     )
 
 
-def extract_bioproject(output_dir: UPath) -> list[UPath]:
+def extract_bioproject(output_dir: UPath) -> AssetMetadata:
     """Extract bioproject data to NDJSON files."""
     return _extract_entity(
         url=BIO_PROJECT_URL,
@@ -84,7 +87,7 @@ def _extract_entity(
     output_dir: UPath,
     parser_class,
     use_gzip_input: bool,
-) -> list[UPath]:
+) -> AssetMetadata:
     """Extract a single entity type to gzipped JSONL (streaming)."""
     output_dir = output_dir / entity / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -154,7 +157,19 @@ def _extract_entity(
     logger.info(
         f"Completed {entity} extraction: {obj_counter} records, {len(output_files)} files"
     )
-    return output_files
+    asset_metadata = AssetMetadata(
+        asset_key = f"src_{entity}",
+        storage_path = str(output_path),
+        upstream_assets = [BIO_SAMPLE_URL if entity == "biosample" else BIO_PROJECT_URL],
+        row_count = obj_counter,
+        format = "jsonl",
+        compression = "gzip",
+        created_at = datetime.now(),
+        size_bytes = output_path.stat().st_size,
+        runtime_seconds = time.time() - start_time,
+    )
+    return asset_metadata
+        
 
 
 
