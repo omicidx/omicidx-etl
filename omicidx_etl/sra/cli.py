@@ -11,7 +11,6 @@ import click
 from loguru import logger
 
 from omicidx_etl.log import configure_logging, get_logger
-from omicidx_etl.path_provider import get_path_provider
 
 from .mirror import get_sra_mirror_entries, SRAMirrorEntry
 from .catalog import SRACatalog
@@ -82,12 +81,17 @@ def extract(
     Downloads and processes the latest SRA mirror, filtering by date and entity type.
     """
     log = get_logger(__name__)
+    
+    import os
+    
+    logger.info(os.environ)
 
-    # If dest not provided, use PathProvider default
+    # Require dest parameter
     if dest is None:
-        provider = get_path_provider()
-        dest = str(provider.get_path("sra"))
-        log.info(f"Using default destination from PathProvider: {dest}")
+        raise click.UsageError(
+            "The --dest option is required. "
+            "Provide a destination like: s3://omicidx/sra/raw or /local/path/sra/raw"
+        )
 
     try:
         log.info(
@@ -113,10 +117,10 @@ def extract(
         
         # Filter by date range
         if since or until:
-            since_date = since if since else None
-            until_date = until if until else None
+            since_date = since.date() if since else None
+            until_date = until.date() if until else None
             before_filter = len(filtered_entries)
-            
+
             if since_date and until_date:
                 filtered_entries = [
                     e for e in filtered_entries
@@ -155,9 +159,8 @@ def extract(
         
         # Process entries
         log.info(f"Creating SRACatalog for destination {dest}")
-        path_provider = get_path_provider(dest)
-        catalog = SRACatalog(path_provider)
-        
+        catalog = SRACatalog(dest)
+
         log.info("Processing entries")
         catalog.process(filtered_entries)
         
@@ -190,11 +193,12 @@ def cleanup(dest: Optional[str], dry_run: bool):
     """
     log = get_logger(__name__)
 
-    # If dest not provided, use PathProvider default
+    # Require dest parameter
     if dest is None:
-        provider = get_path_provider()
-        dest = str(provider.get_path("sra"))
-        log.info(f"Using default destination from PathProvider: {dest}")
+        raise click.UsageError(
+            "The --dest option is required. "
+            "Provide a destination like: s3://omicidx/sra/raw or /local/path/sra/raw"
+        )
 
     try:
         log.info("Starting SRA cleanup", dest=dest, dry_run=dry_run)
@@ -219,9 +223,8 @@ def cleanup(dest: Optional[str], dry_run: bool):
             return
         
         # Perform cleanup
-        path_provider = get_path_provider(dest)
-        catalog = SRACatalog(path_provider)
-        
+        catalog = SRACatalog(dest)
+
         log.info("Cleaning up old entries")
         catalog.cleanup(all_entries)
         

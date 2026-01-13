@@ -24,10 +24,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 import tempfile
 import shutil
 
-from omicidx_etl.path_provider import get_path_provider
 
-
-OUTPUT_PATH =  get_path_provider('s3://omicidx').get_path('geo', 'raw')
+# Default output path - can be overridden via CLI
+OUTPUT_PATH = UPath('s3://omicidx/geo/raw')
 OUTPUT_DIR = str(OUTPUT_PATH)
 
 faulthandler.enable()
@@ -390,8 +389,13 @@ def geo():
 
 
 @geo.command()
-def extract():
+@click.argument("output_base", default="s3://omicidx")
+def extract(output_base: str):
     """Extract GEO metadata."""
+    global OUTPUT_PATH, OUTPUT_DIR
+    OUTPUT_PATH = UPath(output_base) / "geo" / "raw"
+    OUTPUT_DIR = str(OUTPUT_PATH)
+    logger.info(f"Starting GEO extraction to {OUTPUT_PATH}")
     anyio.run(main)
 
 if __name__ == "__main__":

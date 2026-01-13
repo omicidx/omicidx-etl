@@ -13,7 +13,6 @@ from pathlib import Path
 from omicidx.biosample import BioSampleParser, BioProjectParser
 import click
 from omicidx_etl.log import get_logger
-from omicidx_etl.path_provider import get_path_provider
 import tenacity
 from datetime import datetime
 
@@ -54,7 +53,7 @@ def url_download(url: str, download_filename: str) -> None:
 
 def cleanup_old_files(output_dir: Path, entity: str) -> None:
     """Remove old output files for an entity."""
-    for file_path in output_dir.glob(f"{entity}*{OUTPUT_SUFFIX}"):
+    for file_path in output_dir.glob(f"*{OUTPUT_SUFFIX}"):
         file_path.unlink()
         logger.info(f"Removed old file: {file_path}")
 
@@ -64,7 +63,7 @@ def extract_biosample(output_dir: UPath) -> AssetMetadata:
     return _extract_entity(
         url=BIO_SAMPLE_URL,
         entity="biosample",
-        output_dir=output_dir,
+        output_dir=output_dir / "biosample" / "raw",
         parser_class=BioSampleParser,
         use_gzip_input=True,
     )
@@ -75,7 +74,7 @@ def extract_bioproject(output_dir: UPath) -> AssetMetadata:
     return _extract_entity(
         url=BIO_PROJECT_URL,
         entity="bioproject",
-        output_dir=output_dir,
+        output_dir=output_dir / "bioproject" / "raw",
         parser_class=BioProjectParser,
         use_gzip_input=False,
     )
@@ -89,7 +88,6 @@ def _extract_entity(
     use_gzip_input: bool,
 ) -> AssetMetadata:
     """Extract a single entity type to gzipped JSONL (streaming)."""
-    output_dir = output_dir / entity / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     cleanup_old_files(output_dir, entity)
 
@@ -120,7 +118,7 @@ def _extract_entity(
         heartbeat_thread = threading.Thread(target=_log_heartbeat, daemon=True)
         heartbeat_thread.start()
 
-        output_path = output_dir / f"{entity}{OUTPUT_SUFFIX}"
+        output_path = output_dir / f"data{OUTPUT_SUFFIX}"
 
         try:
             with tempfile.NamedTemporaryFile(
@@ -195,7 +193,7 @@ def biosample():
 @click.argument("output_base")
 def extract(output_base: str):
     """Command-line interface for extraction and optional upload."""
-    output_path = get_path_provider(output_base).get_path("biosample", "raw")
+    output_path = UPath(output_base)
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)
 

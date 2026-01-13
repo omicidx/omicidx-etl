@@ -10,7 +10,6 @@ import json
 
 from upath import UPath
 
-from ..path_provider import PathProvider
 from ..log import get_logger, log_operation, LogProgress
 from .mirror import SRAMirrorEntry
 from .mirror_parquet import process_mirror_entry_to_parquet_parts
@@ -19,19 +18,19 @@ from .mirror_parquet import process_mirror_entry_to_parquet_parts
 class SRACatalog:
     """
     Manages the SRA catalog: processing mirror entries and cleaning up old data.
-    
+
     The catalog organizes data in a directory structure like:
-        {base_path}/{entity}/date={YYYY-MM-DD}/stage={Full|Incremental}/data_*.parquet
+        {base_dir}/{entity}/date={YYYY-MM-DD}/stage={Full|Incremental}/data_*.parquet
     """
-    
-    def __init__(self, path_provider: PathProvider):
+
+    def __init__(self, base_dir: UPath | str):
         """
         Initialize the SRA catalog.
-        
+
         Args:
-            path_provider: PathProvider instance for managing output paths
+            base_dir: Base directory for SRA data (e.g., 's3://omicidx/sra/raw')
         """
-        self.path_provider = path_provider
+        self.base_dir = UPath(base_dir)
         self.log = get_logger(__name__)
 
     def _done_marker_path(self, mirror_entry: SRAMirrorEntry) -> UPath:
@@ -41,36 +40,38 @@ class SRACatalog:
     def path_for_mirror_entry(self, mirror_entry: SRAMirrorEntry) -> UPath:
         """
         Return the legacy path where a single NDJSON file would be stored.
-        
+
         This is kept for cleanup of old data but not used for new writes.
-        
+
         Args:
             mirror_entry: The SRA mirror entry
-            
+
         Returns:
             Path to the legacy NDJSON file
         """
-        return self.path_provider.get_path(
-            mirror_entry.entity,
-            f"date={mirror_entry.date.strftime('%Y-%m-%d')}",
-            f"stage={'Full' if mirror_entry.is_full else 'Incremental'}",
-            "data_0.ndjson.gz"
+        return (
+            self.base_dir
+            / mirror_entry.entity
+            / f"date={mirror_entry.date.strftime('%Y-%m-%d')}"
+            / f"stage={'Full' if mirror_entry.is_full else 'Incremental'}"
+            / "data_0.ndjson.gz"
         )
-    
+
     def parquet_dir_for_mirror_entry(self, mirror_entry: SRAMirrorEntry) -> UPath:
         """
         Return the directory path where parquet parts should be stored.
-        
+
         Args:
             mirror_entry: The SRA mirror entry
-            
+
         Returns:
             Path to the parquet directory for this entry
         """
-        return self.path_provider.get_path(
-            mirror_entry.entity,
-            f"date={mirror_entry.date.strftime('%Y-%m-%d')}",
-            f"stage={'Full' if mirror_entry.is_full else 'Incremental'}",
+        return (
+            self.base_dir
+            / mirror_entry.entity
+            / f"date={mirror_entry.date.strftime('%Y-%m-%d')}"
+            / f"stage={'Full' if mirror_entry.is_full else 'Incremental'}"
         )
     
     def _rm_tree(self, p: UPath) -> None:
@@ -173,9 +174,7 @@ class SRACatalog:
 
         if done_marker.exists():
             log.info(
-                "Skipping entry; done marker exists",
-                marker=str(done_marker),
-                url=mirror_entry.url,
+                f"Skipping entry; done marker exists {done_marker}, {mirror_entry.url}, {out_dir}"
             )
             return
         

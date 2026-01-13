@@ -71,6 +71,8 @@ def process_mirror_entry_to_parquet_parts(
     schema = get_pyarrow_schema(entity)
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"Pushing to output directory: {out_dir}")
 
     buf: list[dict] = []
     part = 0
@@ -94,6 +96,7 @@ def process_mirror_entry_to_parquet_parts(
             out_path.parent.mkdir(parents=True, exist_ok=True)
             with open(tmp_path, "rb") as f_in, out_path.open("wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
+                logger.debug(f"Uploaded parquet part to: {out_path}")
 
             written.append(out_path)
             logger.debug(f"Wrote parquet part: {out_path}")

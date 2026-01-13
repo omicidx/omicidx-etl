@@ -8,7 +8,7 @@ Usage:
     python -m omicidx_etl.sra.etl
 
 Environment Variables:
-    OMICIDX_SRA_DEST: Output destination (defaults to PathProvider setting)
+    OMICIDX_SRA_DEST: Output destination (required, e.g., s3://omicidx/sra/raw)
 
 The extract command will:
 1. Fetch the latest SRA mirror entries
