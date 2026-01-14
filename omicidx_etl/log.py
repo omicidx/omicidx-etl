@@ -57,7 +57,9 @@ def configure_logging(
     # Auto-detect JSON logging preference
     if json_logs is None:
         env_json = os.getenv("OMICIDX_JSON_LOGS", "").lower() in ("1", "true", "yes")
-        json_logs = env_json or is_ci_environment()
+        # revert back to human-readable logs even in CI for now
+        # Github actions logging output is hard to read with JSON
+        json_logs = env_json # or is_ci_environment()
     
     if json_logs:
         # Structured JSON for CI/production
