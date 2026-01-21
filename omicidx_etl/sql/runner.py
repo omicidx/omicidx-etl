@@ -33,7 +33,7 @@ from omicidx_etl.sql import get_sql, list_sql_files
 
 def get_connection() -> duckdb.DuckDBPyConnection:
     """Create a DuckDB connection with httpfs extension loaded."""
-    con = duckdb.connect()
+    con = duckdb.connect('omicidx.duckdb')
     con.execute("INSTALL httpfs; LOAD httpfs;")
     return con
 
