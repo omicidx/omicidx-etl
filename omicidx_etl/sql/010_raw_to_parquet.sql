@@ -5,13 +5,6 @@
 --------
 
 
-create or replace secret r2 (
-    TYPE r2,
-    KEY_ID getenv('AWS_ACCESS_KEY_ID'),
-    SECRET getenv('AWS_SECRET_ACCESS_KEY'),
-    ACCOUNT_ID regexp_extract(getenv('AWS_ENDPOINT_URL'), 'https://([^.]+)', 1)
-);
-
 
 copy (
     select *
@@ -127,5 +120,3 @@ copy (
 ) to 'r2://omicidx/biosample/parquet/biosamples.parquet' (format parquet, compression zstd);
 
 select count(*) from read_parquet('r2://omicidx/biosample/parquet/biosamples.parquet');
-
-drop secret r2;
