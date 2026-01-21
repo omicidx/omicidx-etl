@@ -24,6 +24,7 @@ Usage (Python):
 """
 
 from datetime import datetime
+import os
 from upath import UPath
 from ..log import logger
 
@@ -38,9 +39,25 @@ def get_connection(duckdb_name: str = "omicidx.duckdb") -> duckdb.DuckDBPyConnec
     con = duckdb.connect(duckdb_name)
     con.execute("INSTALL httpfs; LOAD httpfs;")
     
-    logger.info(f"Created DuckDB called {duckdb_name} with httpfs extension loaded.")
+    try:
+        aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
+        aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
+        aws_endpoint_url = os.environ['AWS_ENDPOINT_URL'].replace('https://', '').split('.')[0]
+        sql = f"""
+create or replace secret r2 (
+    TYPE r2,
+    KEY_ID '{aws_access_key_id}',
+    SECRET '{aws_secret_access_key}',
+    ACCOUNT_ID '{aws_endpoint_url}'
+);"""
+        con.execute(sql)
     
-    return con
+        logger.info("sql secret for R2 created successfully.")
+        return con
+    except KeyError as e:
+        logger.error(f"Missing AWS environment variable: {e}. R2 secret not created.")
+        raise
+        
 
 
 def run_sql_file(
@@ -146,6 +163,8 @@ def run_cmd(files: tuple[str, ...], quiet: bool):
         con = get_connection()
         for name in files:
             run_sql_file(name, con=con, verbose=verbose)
+            
+        con.execute('DROP SECRET r2 IF EXISTS;')
     else:
         # Run all
         run_all(verbose=verbose)
