@@ -24,6 +24,8 @@ Usage (Python):
 """
 
 from datetime import datetime
+from upath import UPath
+from ..log import logger
 
 import click
 import duckdb
@@ -31,10 +33,13 @@ import duckdb
 from omicidx_etl.sql import get_sql, list_sql_files
 
 
-def get_connection() -> duckdb.DuckDBPyConnection:
+def get_connection(duckdb_name: str = "omicidx.duckdb") -> duckdb.DuckDBPyConnection:
     """Create a DuckDB connection with httpfs extension loaded."""
-    con = duckdb.connect('omicidx.duckdb')
+    con = duckdb.connect(duckdb_name)
     con.execute("INSTALL httpfs; LOAD httpfs;")
+    
+    logger.info(f"Created DuckDB called {duckdb_name} with httpfs extension loaded.")
+    
     return con
 
 
@@ -57,14 +62,12 @@ def run_sql_file(
         con = get_connection()
 
     sql = get_sql(name)
-
-    if verbose:
-        click.echo(f"[{datetime.now():%H:%M:%S}] Running {name}...")
-
+    
+    logger.info(f"Running SQL file: {name}")
+    
     con.execute(sql)
 
-    if verbose:
-        click.echo(f"[{datetime.now():%H:%M:%S}] Completed {name}")
+    logger.info(f"Completed SQL file: {name}")
 
     return con
 
@@ -87,16 +90,31 @@ def run_all(
 
     files = list_sql_files()
 
-    if verbose:
-        click.echo(f"[{datetime.now():%H:%M:%S}] Running {len(files)} SQL files...")
+    logger.info(f"Running {len(files)} SQL files...")
 
     for name in files:
         run_sql_file(name, con=con, verbose=verbose)
 
-    if verbose:
-        click.echo(f"[{datetime.now():%H:%M:%S}] All SQL files completed")
+    logger.info("All SQL files completed")
+    
+    # get names of all tables and views
+    res = con.execute("SHOW TABLES;").fetchall()
+    table_names = [row[0] for row in res]
+    logger.info(f"Created tables/views: {table_names}")
 
     return con
+
+
+def transfer_duckdb_to_s3(
+    local_path: UPath = UPath('omicidx.duckdb'),
+    s3_path: UPath = UPath('s3://omicidx/duckdb/omicidx.duckdb')
+) -> None:
+    """Transfer DuckDB database file to S3."""
+    with local_path.open('rb') as local_file, s3_path.open('wb') as s3_file:
+        s3_file.write(local_file.read())
+    
+    logger.info(f"Transferred DuckDB database to {s3_path}")
+    
 
 
 @click.group()
@@ -111,7 +129,7 @@ def list_cmd():
     click.echo("Available SQL files:")
     for name in list_sql_files():
         click.echo(f"  {name}")
-
+        
 
 @sql.command("run")
 @click.argument("files", nargs=-1)
@@ -131,3 +149,5 @@ def run_cmd(files: tuple[str, ...], quiet: bool):
     else:
         # Run all
         run_all(verbose=verbose)
+        
+    transfer_duckdb_to_s3()
