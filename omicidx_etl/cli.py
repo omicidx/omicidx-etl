@@ -11,6 +11,7 @@ load_dotenv()
 from omicidx_etl.biosample.extract import biosample
 from omicidx_etl.geo.extract import geo
 from omicidx_etl.sra.cli import sra
+from omicidx_etl.sql.runner import sql
 
 
 @click.group()
@@ -24,6 +25,7 @@ def cli():
 cli.add_command(biosample)
 cli.add_command(sra)
 cli.add_command(geo)
+cli.add_command(sql)
 
 if __name__ == "__main__":
     cli()
