@@ -94,7 +94,7 @@ def create_metadata_table(
     table_name: str = "db_creation_metadata"
 ) -> None:
     """Create a metadata table to track ETL runs."""
-    sql = f"""create table {table_name} as select current_timestamp() as created_at;"""
+    sql = f"""create table {table_name} as select now() as created_at;"""
     
     con.execute(sql)
     
