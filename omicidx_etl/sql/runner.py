@@ -89,6 +89,56 @@ def run_sql_file(
     return con
 
 
+def create_metadata_table(
+    con: duckdb.DuckDBPyConnection,
+    table_name: str = "db_creation_metadata"
+) -> None:
+    """Create a metadata table to track ETL runs."""
+    sql = f"""create table {table_name} as select current_timestamp() as created_at;"""
+    
+    con.execute(sql)
+    
+    
+def get_table_summaries(con: duckdb.DuckDBPyConnection) -> list[dict]:
+    """Get summaries of all tables in the DuckDB database.
+
+    Args:
+        con: DuckDB connection
+    Returns:
+        List of dictionaries with table summaries
+    """
+    res = con.execute("SHOW TABLES;").fetchall()
+    table_names = [row[0] for row in res]
+    
+    summaries = []
+    for table in table_names:
+        count_res = con.execute(f"SELECT COUNT(*) FROM {table};").fetchone()
+        if count_res is not None:
+            count = count_res[0]
+        else:
+            count = 0
+        summaries.append({
+            "table_name": table,
+            "row_count": count
+        })
+    
+    return summaries
+
+
+def write_summary_data_json(summaries: list[dict], output_path: UPath) -> None:
+    """Write summary data to a JSON file.
+
+    Args:
+        summaries: List of table summaries
+        output_path: Path to output JSON file
+    """
+    import json
+
+    with output_path.open('w') as f:
+        json.dump(summaries, f, indent=4)
+    
+    logger.info(f"Wrote summary data to {output_path}")
+
 def run_all(
     con: duckdb.DuckDBPyConnection | None = None,
     verbose: bool = True,
@@ -114,10 +164,15 @@ def run_all(
 
     logger.info("All SQL files completed")
     
-    # get names of all tables and views
-    res = con.execute("SHOW TABLES;").fetchall()
-    table_names = [row[0] for row in res]
-    logger.info(f"Created tables/views: {table_names}")
+    # get summaries of created tables/views
+    summaries = get_table_summaries(con)
+    for summary in summaries:
+        logger.info(f"Table/View: {summary['table_name']}, Rows: {summary['row_count']}")
+    # write summaries to JSON
+    output_path = UPath(f"s3://omicidx/duckdb/metadata/{datetime.now().isoformat()}_metadata.json")
+    write_summary_data_json(summaries, output_path)
+
+    create_metadata_table(con)
 
     return con
 
