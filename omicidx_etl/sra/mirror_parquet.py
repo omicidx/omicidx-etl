@@ -62,7 +62,7 @@ def process_mirror_entry_to_parquet_parts(
     Returns:
         List of written parquet file paths
     """
-    CHUNK_SIZE = 2_500_000
+    CHUNK_SIZE = 500_000
     compression = "zstd"
     
     import pyarrow as pa
