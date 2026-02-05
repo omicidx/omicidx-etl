@@ -20,6 +20,17 @@ jobs:
       OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - uses: 'actions/checkout@v4'
 
       - name: Install uv
