@@ -72,7 +72,10 @@ def run_sql_file(
     con: duckdb.DuckDBPyConnection | None = None,
     verbose: bool = True,
 ) -> duckdb.DuckDBPyConnection:
-    """Run a SQL file.
+    """Run a SQL file, executing each statement individually.
+
+    Uses sqlglot to split the file into individual statements so that
+    each one is logged and DuckDB can release resources between them.
 
     Args:
         name: SQL filename (e.g., "010_raw_to_parquet.sql")
@@ -82,14 +85,21 @@ def run_sql_file(
     Returns:
         The DuckDB connection (for chaining)
     """
+    import sqlglot
+
     if con is None:
         con = get_connection()
 
     sql = get_sql(name)
-    
-    logger.info(f"Running SQL file: {name}")
-    
-    con.execute(sql)
+    statements = sqlglot.transpile(sql, read="duckdb")
+
+    logger.info(f"Running SQL file: {name} ({len(statements)} statements)")
+
+    for i, stmt in enumerate(statements, 1):
+        preview = stmt[:120].replace("\n", " ")
+        logger.info(f"[{name}] Statement {i}/{len(statements)}: {preview}")
+        con.execute(stmt)
+        logger.info(f"[{name}] Statement {i}/{len(statements)} completed")
 
     logger.info(f"Completed SQL file: {name}")
 
