@@ -75,10 +75,11 @@ copy (
 
 select count(*) from read_parquet('r2://omicidx/sra/parquet/sra_experiments.parquet');
 
+
+-- remove order by to reduce resource usage on github acions
 copy (
     select *
     from read_parquet('r2://omicidx/sra/raw/sample/**/*parquet')
-    order by accession
 ) to 'r2://omicidx/sra/parquet/sra_samples.parquet' (format parquet, compression zstd);
 
 
