@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+DIRECTORY=/home/davsean/Documents/git/omicidx-etl
+
+cd $DIRECTORY
 
 REPO="omicidx/omicidx-etl"
 WORKFLOW="sql_runner_status.yaml"

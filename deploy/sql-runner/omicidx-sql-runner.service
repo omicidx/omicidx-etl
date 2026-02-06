@@ -5,7 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=davsean
+Environment=PATH=/home/davsean/.local/bin:/usr/local/bin:/usr/bin:/bin
 WorkingDirectory=/home/davsean/Documents/git/omicidx-etl
 EnvironmentFile=/home/davsean/.config/omicidx/env
 ExecStart=/home/davsean/Documents/git/omicidx-etl/deploy/sql-runner/run-and-report.sh
