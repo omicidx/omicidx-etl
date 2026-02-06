@@ -51,7 +51,14 @@ create or replace secret r2 (
     ACCOUNT_ID '{aws_endpoint_url}'
 );"""
         con.execute(sql)
-    
+
+        # check if running in CI environment and adjust settings accordingly
+        if os.getenv('CI'):
+            logger.info("Running in CI environment, adjusting DuckDB settings for CI.")
+            con.execute("set memory_limit='4GB';")
+            con.execute("set threads=2;")
+            con.execute("set preserve_insertion_order=false;")
+        
         logger.info("sql secret for R2 created successfully.")
         return con
     except KeyError as e:
