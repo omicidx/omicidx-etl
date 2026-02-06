@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+DIRECTORY=/home/davsean/Documents/git/omicidx-etl
+
+cd $DIRECTORY
 
 ETL_DIR=/home/davsean/Documents/git/omicidx-etl
 OMICIDX_DIR=/home/davsean/Documents/git/omicidx
