@@ -23,6 +23,17 @@ jobs:
       LOGURU_LEVEL: DEBUG
 
     steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
       - uses: 'actions/checkout@v4'
 
       - name: Install uv

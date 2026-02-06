@@ -44,12 +44,6 @@ def sra():
     help="Only process entries on or before this date (YYYY-MM-DD)",
 )
 @click.option(
-    "--chunk-size",
-    type=int,
-    default=100_000,
-    help="Records per parquet part file (default: 100000)",
-)
-@click.option(
     "--entity",
     type=click.Choice(["study", "sample", "experiment", "run", "all"]),
     default="all",
@@ -70,7 +64,6 @@ def extract(
     dest: Optional[str],
     since: Optional[date],
     until: Optional[date],
-    chunk_size: int,
     entity: str,
     dry_run: bool,
     max_entries: Optional[int],
@@ -99,7 +92,6 @@ def extract(
             dest=dest,
             since=since,
             until=until,
-            chunk_size=chunk_size,
             entity=entity,
             dry_run=dry_run,
         )
