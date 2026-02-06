@@ -1,9 +1,9 @@
 name: Daily SQL Runner
+# NOTE: Daily runs now happen via systemd timer on the local server.
+# See deploy/sql-runner/ for the systemd setup.
+# This workflow is kept for occasional manual runs from GitHub Actions.
 on:
   workflow_dispatch:
-  schedule:
-    # Run daily at 7am UTC
-    - cron:  '0 7 * * *'
 
 jobs:
   run-sql:
