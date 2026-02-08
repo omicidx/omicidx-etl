@@ -1,2 +1,0 @@
-# SQLMesh catalog generation scripts
-
