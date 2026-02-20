@@ -3,14 +3,12 @@ CLI commands for SRA module.
 
 Provides commands to sync SRA mirror entries and manage the catalog.
 """
-import json
 from typing import Optional
 from datetime import date
 
 import click
-from loguru import logger
 
-from omicidx_etl.log import configure_logging, get_logger
+from omicidx_etl.log import get_logger
 
 from .mirror import get_sra_mirror_entries, SRAMirrorEntry
 from .catalog import SRACatalog
@@ -75,10 +73,6 @@ def extract(
     """
     log = get_logger(__name__)
     
-    import os
-    
-    logger.info(os.environ)
-
     # Require dest parameter
     if dest is None:
         raise click.UsageError(
