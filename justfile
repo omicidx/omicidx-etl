@@ -34,7 +34,7 @@ icite-extract:
 # Run `oidx pubmed extract`
 [group('oidx')]
 pubmed-extract:
-    uv run oidx pubmed extract ${OMICIDX_DATA_ROOT}
+    uv run oidx pubmed extract s3://${OMICIDX_DATA_ROOT}
 
 
 
