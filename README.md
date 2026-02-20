@@ -57,3 +57,13 @@ uv run oidx geo extract s3://omicidx
 ```
 # → Creates: s3://omicidx/geo/raw/{gse,gsm,gpl}/year=YYYY/month=MM/data_0.ndjson.gz
 ```
+
+### PubMed
+
+```bash
+uv run oidx pubmed extract s3://omicidx
+```
+
+```
+# → Creates: s3://omicidx/pubmed/raw/pubmed*.parquet
+```
