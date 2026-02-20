@@ -33,4 +33,4 @@ jobs:
         run: uv sync
 
       - name: Run GEO extraction
-        run: uv run oidx geo extract
+        run: uv run oidx geo extract s3://$OMICIDX_BASE_PATH

@@ -1,15 +1,15 @@
-name: ETL for NCBI Biosample
+name: ETL for PubMed
 on:
   workflow_dispatch:
   schedule:
-    # Run daily at 6am UTC
-    - cron:  '0 6 * * *'
+    # Run daily at 5am UTC
+    - cron: "0 5 * * *"
 
 jobs:
   run-extraction:
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -18,19 +18,13 @@ jobs:
       AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
       AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
       OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
-      PYTHONUNBUFFERED: 1 # Ensure real-time logging output
+      PYTHONUNBUFFERED: 1
 
     steps:
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-          # this might remove tools that are actually needed,
-          # if set to "true" but frees about 6 GB
           tool-cache: false
-          
-          # all of these default to true, but feel free to set to
-          # "false" if necessary for your workflow
           android: true
           dotnet: true
           haskell: true
@@ -38,8 +32,7 @@ jobs:
           docker-images: true
           swap-storage: true
 
-
-      - uses: 'actions/checkout@v4'
+      - uses: "actions/checkout@v4"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -51,5 +44,5 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run extraction
-        run: uv run oidx biosample extract s3://$OMICIDX_BASE_PATH
+      - name: Run PubMed extraction
+        run: uv run oidx pubmed extract s3://$OMICIDX_BASE_PATH

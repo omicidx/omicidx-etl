@@ -1,5 +1,6 @@
 import re
 import datetime
+import os
 import click
 import pubmed_parser as pp
 from urllib.request import urlretrieve
@@ -126,9 +127,22 @@ def pubmed():
 
 
 @pubmed.command()
-@click.argument("output_dir", type=UPath)
-def extract(output_dir: str):
-    """Command-line interface for extraction and optional upload."""
-    output_path = UPath(output_dir)
+@click.argument("output_base", required=False)
+@click.option("--replace", is_flag=True, help="Reprocess all PubMed files.")
+def extract(output_base: str | None, replace: bool):
+    """Extract PubMed data to Parquet files."""
+    output_path = resolve_output_path(output_base)
     logger.info(f"Starting extraction to {output_path}")
-    etl_pubmeds(output_path)
+    etl_pubmeds(output_path, replace=replace)
+
+
+def resolve_output_path(output_base: str | None) -> UPath:
+    """Resolve PubMed output path using base-path conventions."""
+    if output_base is None:
+        base_path = os.getenv("OMICIDX_BASE_PATH", "omicidx")
+        output_base = base_path if "://" in base_path else f"s3://{base_path}"
+    return UPath(output_base) / "pubmed" / "raw"
+
+
+if __name__ == "__main__":
+    pubmed()

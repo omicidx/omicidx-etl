@@ -1,6 +1,7 @@
 import anyio
 import re
 import faulthandler
+import os
 from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
@@ -294,7 +295,7 @@ async def geo_metadata_by_date(
 ):
     gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
     if (
-        gse_path.exists() or gsm_path.exists() or gpl_path.exists()
+        gse_path.exists() and gsm_path.exists() and gpl_path.exists()
     ) and end_date < date.today():
         logger.debug(f"Skipping {start_date} to {end_date} since it already exists")
         return
@@ -362,10 +363,7 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
 async def main():
     # Get the GSEs with RNA-seq counts
     # updated each run since it is very fast
-    
-    import os
-    print(os.environ)
-    
+
     gses_with_rna_seq = gse_with_rna_seq_counts()
     outfile = OUTPUT_PATH / "gse_with_rna_seq_counts.parquet"
     
@@ -389,10 +387,13 @@ def geo():
 
 
 @geo.command()
-@click.argument("output_base", default="s3://omicidx")
-def extract(output_base: str):
+@click.argument("output_base", required=False)
+def extract(output_base: str | None):
     """Extract GEO metadata."""
     global OUTPUT_PATH, OUTPUT_DIR
+    if output_base is None:
+        base_path = os.getenv("OMICIDX_BASE_PATH", "omicidx")
+        output_base = base_path if "://" in base_path else f"s3://{base_path}"
     OUTPUT_PATH = UPath(output_base) / "geo" / "raw"
     OUTPUT_DIR = str(OUTPUT_PATH)
     logger.info(f"Starting GEO extraction to {OUTPUT_PATH}")
