@@ -61,16 +61,21 @@ def test_get_result_paths_structure(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.anyio
-async def test_skip_guard_skips_when_all_three_files_exist(tmp_path, monkeypatch):
-    """geo_metadata_by_date returns immediately when all 3 output files exist."""
+async def test_skip_guard_skips_when_gse_and_gsm_exist(tmp_path, monkeypatch):
+    """geo_metadata_by_date returns immediately when GSE and GSM files exist.
+
+    GPL is excluded from the skip check because many months have no new
+    platform records; requiring gpl_path would cause spurious backfills of
+    all historical months that were processed before the always-write fix.
+    """
     monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
 
     start = date(2020, 1, 1)
     end = date(2020, 1, 31)
 
-    # Create all three expected output files
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
-    for path in (gse, gsm, gpl):
+    # Create only the GSE and GSM files (GPL absent — normal for many months)
+    gse, gsm, _gpl = geo_extract.get_result_paths(start, end)
+    for path in (gse, gsm):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
 
@@ -85,23 +90,17 @@ async def test_skip_guard_skips_when_all_three_files_exist(tmp_path, monkeypatch
 
 
 @pytest.mark.anyio
-async def test_skip_guard_does_not_skip_when_gpl_missing(tmp_path, monkeypatch):
-    """geo_metadata_by_date does NOT skip when gpl_path is absent.
-
-    This confirms the and-based guard requires all 3 files.  The companion fix
-    (write_geo_entity_worker always writes GPL) ensures this situation only
-    arises when a month genuinely hasn't been processed yet.
-    """
+async def test_skip_guard_does_not_skip_when_only_gse_exists(tmp_path, monkeypatch):
+    """geo_metadata_by_date reprocesses when GSM is absent (incomplete prior run)."""
     monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
 
     start = date(2020, 2, 1)
     end = date(2020, 2, 29)
 
-    gse, gsm, gpl = geo_extract.get_result_paths(start, end)
-    # Create GSE and GSM but NOT GPL
-    for path in (gse, gsm):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
+    gse, _gsm, _gpl = geo_extract.get_result_paths(start, end)
+    # Only GSE written — simulates a partially-completed prior run
+    gse.parent.mkdir(parents=True, exist_ok=True)
+    gse.touch()
 
     called = []
 
@@ -114,7 +113,7 @@ async def test_skip_guard_does_not_skip_when_gpl_missing(tmp_path, monkeypatch):
 
     await geo_extract.geo_metadata_by_date(start, end, UPath(tmp_path))
 
-    assert called, "prod1 should be invoked when gpl_path is missing"
+    assert called, "prod1 should be invoked when GSM is missing"
 
 
 # ---------------------------------------------------------------------------
