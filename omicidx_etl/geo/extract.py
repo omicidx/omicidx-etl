@@ -286,11 +286,13 @@ async def geo_metadata_by_date(
 ):
     gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
     if (
-        gse_path.exists() and gsm_path.exists()
+        gse_path.exists() or gsm_path.exists() or gpl_path.exists()
     ) and end_date < date.today():
-        # GPL is intentionally excluded from the check: many months have no new
-        # platform (GPL) records, so gpl_path may be absent even for fully-
-        # processed months.  GSE and GSM are sufficient evidence of completion.
+        # Any existing output file is sufficient evidence that this month was
+        # already processed: some months have no GSE records, others no GPL.
+        # The companion fix (write_geo_entity_worker always writes all three
+        # files) ensures every future run leaves all three files in place,
+        # making this check unambiguous going forward.
         logger.debug(f"Skipping {start_date} to {end_date} since it already exists")
         return
     (

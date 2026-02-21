@@ -61,47 +61,43 @@ def test_get_result_paths_structure(tmp_path):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.anyio
-async def test_skip_guard_skips_when_gse_and_gsm_exist(tmp_path, monkeypatch):
-    """geo_metadata_by_date returns immediately when GSE and GSM files exist.
+async def test_skip_guard_skips_when_any_file_exists(tmp_path, monkeypatch):
+    """geo_metadata_by_date returns immediately when any output file exists.
 
-    GPL is excluded from the skip check because many months have no new
-    platform records; requiring gpl_path would cause spurious backfills of
-    all historical months that were processed before the always-write fix.
+    Some months have no GSE records (only GSM/GPL), others have no GPL.
+    Using `or` means any existing file is sufficient evidence the month was
+    already processed.  The always-write fix (write_geo_entity_worker) ensures
+    all three files are created on every future run, so the check is
+    unambiguous going forward.
     """
     monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
 
+    # Test with only GSM present (no GSE, no GPL) — common for some months
     start = date(2020, 1, 1)
     end = date(2020, 1, 31)
 
-    # Create only the GSE and GSM files (GPL absent — normal for many months)
-    gse, gsm, _gpl = geo_extract.get_result_paths(start, end)
-    for path in (gse, gsm):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
+    _gse, gsm, _gpl = geo_extract.get_result_paths(start, end)
+    gsm.parent.mkdir(parents=True, exist_ok=True)
+    gsm.touch()
 
-    # Replace prod1 with a sentinel that raises if called
     async def must_not_be_called(*args, **kwargs):
         raise AssertionError("prod1 (network) should not run when month is already processed")
 
     monkeypatch.setattr(geo_extract, "prod1", must_not_be_called)
 
-    # Should return without raising — skip guard fires before reaching prod1
+    # Should return without raising — skip guard fires even with only GSM
     await geo_extract.geo_metadata_by_date(start, end, UPath(tmp_path))
 
 
 @pytest.mark.anyio
-async def test_skip_guard_does_not_skip_when_only_gse_exists(tmp_path, monkeypatch):
-    """geo_metadata_by_date reprocesses when GSM is absent (incomplete prior run)."""
+async def test_skip_guard_does_not_skip_when_no_files_exist(tmp_path, monkeypatch):
+    """geo_metadata_by_date processes months that have no output files at all."""
     monkeypatch.setattr(geo_extract, "OUTPUT_PATH", UPath(tmp_path))
 
     start = date(2020, 2, 1)
     end = date(2020, 2, 29)
 
-    gse, _gsm, _gpl = geo_extract.get_result_paths(start, end)
-    # Only GSE written — simulates a partially-completed prior run
-    gse.parent.mkdir(parents=True, exist_ok=True)
-    gse.touch()
-
+    # No files created — month has never been processed
     called = []
 
     async def mock_prod1(send_stream, s, e):
@@ -113,7 +109,7 @@ async def test_skip_guard_does_not_skip_when_only_gse_exists(tmp_path, monkeypat
 
     await geo_extract.geo_metadata_by_date(start, end, UPath(tmp_path))
 
-    assert called, "prod1 should be invoked when GSM is missing"
+    assert called, "prod1 should be invoked when no output files exist"
 
 
 # ---------------------------------------------------------------------------
