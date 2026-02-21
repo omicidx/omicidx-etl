@@ -15,6 +15,7 @@ Current production extraction components are:
 | [![Biosample](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml) | All metadata from the NCBI Biosample and Bioproject databases |
 | [![ETL for NCBI GEO](https://github.com/omicidx/omicidx-etl/actions/workflows/ncbi_geo_etl.yaml/badge.svg)](https://github.com/omicidx/omicidx-etl/actions/workflows/ncbi_geo_etl.yaml) | All metadata from NCBI Gene Expression Omnibus (GEO) |
 | [![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml) | All metadata from NCBI Sequence Read Archive (SRA) |
+| [![PubMed](https://github.com/omicidx/omicidx-etl/actions/workflows/pubmed_etl.yaml/badge.svg)](https://github.com/omicidx/omicidx-etl/actions/workflows/pubmed_etl.yaml) | All metadata from NCBI PubMed (titles, abstracts, and metadata) |
 
 
 ## Components
