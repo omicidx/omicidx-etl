@@ -24,6 +24,12 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
+      - name: Describe
+        run: |
+          echo "This workflow is triggered by the completion of"
+          echo "an external runner. The workflow result here is"
+          echo "just to add observability for the external workflow."
+    
       - name: Report SQL Runner Status
         run: |
           echo "## SQL Runner Status Report" >> "$GITHUB_STEP_SUMMARY"
