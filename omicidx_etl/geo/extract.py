@@ -119,18 +119,12 @@ async def write_geo_entity_worker(
         tempfile.NamedTemporaryFile() as gsm_temp,
         tempfile.NamedTemporaryFile() as gpl_temp,
     ):
-        gse_written = False
-        gsm_written = False
-        gpl_written = False
-
-
-
         # Note that we don't use parquet because the schema
         # vary by file. We just write ndjson files.
         # The files can be converted in bulk to parquet by duckdb later
         with (
-            gzip.open(gse_temp.name, "wb") as gse_tmp_write, 
-            gzip.open(gsm_temp.name, "wb") as gsm_tmp_write, 
+            gzip.open(gse_temp.name, "wb") as gse_tmp_write,
+            gzip.open(gsm_temp.name, "wb") as gsm_tmp_write,
             gzip.open(gpl_temp.name, "wb") as gpl_tmp_write
         ):
             async with entity_text_to_process_receive:
@@ -143,38 +137,35 @@ async def write_geo_entity_worker(
                         gse_tmp_write.write(
                             entity.model_dump_json().encode("utf-8") + b"\n"
                         )  # type: ignore
-                        gse_written = True
                     elif entity.accession.startswith("GSM"):  # type: ignore
                         gsm_tmp_write.write(
                             entity.model_dump_json().encode("utf-8") + b"\n"
                         )  # type: ignore
-                        gsm_written = True
                     elif entity.accession.startswith("GPL"):  # type: ignore
                         gpl_tmp_write.write(
                             entity.model_dump_json().encode("utf-8") + b"\n"
                         )  # type: ignore
-                        gpl_written = True
                     record_counts[entity.accession[:3]] += 1  # type: ignore
 
 
-        # Copy temporary files to final destinations
-        if gse_written:
-            with open(gse_temp.name, "rb") as src:
-                with gse_path.open("wb") as dst:
+        # Always write all three files, even if empty.
+        # This ensures the skip guard in geo_metadata_by_date (which checks
+        # that all three paths exist) correctly skips months on subsequent runs,
+        # even for months where no GPL (platform) records were updated.
+        for temp_file, path, entity_type in [
+            (gse_temp, gse_path, "GSE"),
+            (gsm_temp, gsm_path, "GSM"),
+            (gpl_temp, gpl_path, "GPL"),
+        ]:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(temp_file.name, "rb") as src:
+                with path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
-            logger.info(f"Wrote {gse_path}")
-
-        if gsm_written:
-            with open(gsm_temp.name, "rb") as src:
-                with gsm_path.open("wb") as dst:
-                    shutil.copyfileobj(src, dst)
-            logger.info(f"Wrote {gsm_path}")
-
-        if gpl_written:
-            with open(gpl_temp.name, "rb") as src:
-                with gpl_path.open("wb") as dst:
-                    shutil.copyfileobj(src, dst)
-            logger.info(f"Wrote {gpl_path}")
+            n = record_counts[entity_type]
+            if n > 0:
+                logger.info(f"Wrote {n} {entity_type} records to {path}")
+            else:
+                logger.debug(f"No {entity_type} records for period; wrote empty {path}")
 
     logger.info(f"Record counts: {record_counts}")
 
