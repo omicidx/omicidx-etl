@@ -1,7 +1,6 @@
 import anyio
 import re
 import faulthandler
-import os
 from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
@@ -26,10 +25,6 @@ logger = get_logger(__name__)
 import tempfile
 import shutil
 
-
-# Default output path - can be overridden via CLI
-OUTPUT_PATH = UPath('s3://omicidx/geo/raw')
-OUTPUT_DIR = str(OUTPUT_PATH)
 
 faulthandler.enable()
 
@@ -81,33 +76,34 @@ async def fetch_geo_soft_worker(
                 await entity_text_to_process_send.send(geo_text)
 
 
-def get_result_paths(start_date, end_date):
+def get_result_paths(start_date, end_date, output_path: UPath):
     """Get the output upaths for the given month.
-    
+
     Assumes hive-like partitioning by year and month.
     Confirmed that duckdb can read from this structure.
-    
+
     Args:
         start_date: Start date of the month
         end_date: End date of the month
-    
+        output_path: Base output path for GEO data
+
     Returns:
         Tuple of UPaths for GSE, GSM, and GPL
     """
-    gse_path = OUTPUT_PATH / "gse" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
-    gsm_path = OUTPUT_PATH / "gsm" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
-    gpl_path = OUTPUT_PATH / "gpl" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gse_path = output_path / "gse" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gsm_path = output_path / "gsm" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
+    gpl_path = output_path / "gpl" / f"year={start_date.strftime('%Y')}" / f"month={start_date.strftime('%m')}" / "data_0.ndjson.gz"
     return gse_path, gsm_path, gpl_path
 
 
 async def write_geo_entity_worker(
     entity_text_to_process_receive: MemoryObjectReceiveStream,  # from process_entitity_worker
-    start_date: date = date(2000, 1, 1),
-    end_date: date = date.today(),
-    output_path: UPath = OUTPUT_PATH,
+    start_date: date,
+    end_date: date,
+    output_path: UPath,
 ):
     """Writes the entity to a file."""
-    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
+    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date, output_path)
 
     record_counts = {
         "GSE": 0,
@@ -281,11 +277,11 @@ def gse_with_rna_seq_counts() -> pl.DataFrame:
 
 
 async def geo_metadata_by_date(
-    start_date: date = date(2000, 1, 1),
-    end_date: date = date.today(),
-    output_path: UPath = OUTPUT_PATH,
+    start_date: date,
+    end_date: date,
+    output_path: UPath,
 ):
-    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date)
+    gse_path, gsm_path, gpl_path = get_result_paths(start_date, end_date, output_path)
     if (
         gse_path.exists() or gsm_path.exists() or gpl_path.exists()
     ) and end_date < date.today():
@@ -357,24 +353,24 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
     return monthly_ranges
 
 
-async def main():
+async def main(output_path: UPath):
     # Get the GSEs with RNA-seq counts
     # updated each run since it is very fast
 
     gses_with_rna_seq = gse_with_rna_seq_counts()
-    outfile = OUTPUT_PATH / "gse_with_rna_seq_counts.parquet"
-    
+    outfile = output_path / "gse_with_rna_seq_counts.parquet"
+
     # Write to a parquet file
     with outfile.open("wb") as f:
         gses_with_rna_seq.write_parquet(f, use_pyarrow=True, compression="zstd")
     logger.info(f"Wrote {len(gses_with_rna_seq)} GSEs with RNA-seq counts to {outfile}")
-    
+
     start = "2005-01-01"
     end = date.today().strftime("%Y-%m-%d")
     ranges = get_monthly_ranges(start, end)
     for start_date, end_date in ranges:
         logger.info(f"Processing GEO metadata from {start_date} to {end_date}")
-        await geo_metadata_by_date(start_date, end_date, OUTPUT_PATH)
+        await geo_metadata_by_date(start_date, end_date, output_path)
 
 
 @click.group()
@@ -384,17 +380,14 @@ def geo():
 
 
 @geo.command()
-@click.argument("output_base", required=False)
+@click.argument("output_base", required=False, default=None)
 def extract(output_base: str | None):
     """Extract GEO metadata."""
-    global OUTPUT_PATH, OUTPUT_DIR
-    if output_base is None:
-        base_path = os.getenv("OMICIDX_BASE_PATH", "omicidx")
-        output_base = base_path if "://" in base_path else f"s3://{base_path}"
-    OUTPUT_PATH = UPath(output_base) / "geo" / "raw"
-    OUTPUT_DIR = str(OUTPUT_PATH)
-    logger.info(f"Starting GEO extraction to {OUTPUT_PATH}")
-    anyio.run(main)
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_path = base / "geo" / "raw"
+    logger.info(f"Starting GEO extraction to {output_path}")
+    anyio.run(main, output_path)
 
 if __name__ == "__main__":
-    anyio.run(main)
+    geo()

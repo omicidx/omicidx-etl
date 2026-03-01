@@ -127,9 +127,12 @@ def icite():
     pass
 
 @icite.command()
-@click.argument('base_directory', type=click.Path(path_type=UPath))
-def extract(base_directory: UPath):
-    output_dir = base_directory / "icite" / "raw"
+@click.argument('output_base', required=False, default=None)
+def extract(output_base: str | None):
+    """Extract iCite data from Figshare."""
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / "icite" / "raw"
     output_dir.mkdir(parents=True, exist_ok=True)
     icite_flow(output_dir)
     

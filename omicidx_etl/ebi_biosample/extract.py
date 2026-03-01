@@ -263,19 +263,16 @@ def ebi_biosample():
     pass
 
 @ebi_biosample.command()
-@click.argument(
-    "output_base",
-    type = str,
-)
-def extract(output_base: str):
+@click.argument("output_base", required=False, default=None)
+def extract(output_base: str | None):
     """Extract EBI Biosample data.
 
-    Fetches biosample data from EBI API and saves to NDJSON format,
-    organized by monthly date ranges.
+    Fetches biosample data from EBI API and saves to Parquet format,
+    organized by daily date ranges.
     """
-    from upath import UPath
-
-    output_dir = UPath(output_base) / 'ebi_biosample' / 'raw'
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / 'ebi_biosample' / 'raw'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Using output directory: {output_dir}")

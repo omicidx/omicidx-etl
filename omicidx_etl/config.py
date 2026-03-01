@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     AWS_URL_STYLE: Optional[str] = 'path'
     AWS_USE_SSL: Optional[bool] = True
     AWS_REGION: Optional[str] = None
+
     @property
     def publish_directory(self) -> UPath:
         return UPath(self.PUBLISH_DIRECTORY)

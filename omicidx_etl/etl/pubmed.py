@@ -1,6 +1,5 @@
 import re
 import datetime
-import os
 import click
 import pubmed_parser as pp
 from urllib.request import urlretrieve
@@ -142,8 +141,8 @@ def extract(output_base: str | None, replace: bool):
 def resolve_output_path(output_base: str | None) -> UPath:
     """Resolve PubMed output path using base-path conventions."""
     if output_base is None:
-        base_path = os.getenv("OMICIDX_BASE_PATH", "omicidx")
-        output_base = base_path if "://" in base_path else f"s3://{base_path}"
+        from omicidx_etl.config import settings
+        return settings.publish_directory / "pubmed" / "raw"
     return UPath(output_base) / "pubmed" / "raw"
 
 

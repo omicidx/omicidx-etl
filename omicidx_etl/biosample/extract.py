@@ -190,10 +190,11 @@ def biosample():
 
 
 @biosample.command()
-@click.argument("output_base")
-def extract(output_base: str):
+@click.argument("output_base", required=False, default=None)
+def extract(output_base: str | None):
     """Command-line interface for extraction and optional upload."""
-    output_path = UPath(output_base)
+    from omicidx_etl.config import settings
+    output_path = UPath(output_base) if output_base else settings.publish_directory
     logger.info(f"Starting extraction to {output_path}")
     extract_all(output_path)
 

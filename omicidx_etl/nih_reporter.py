@@ -314,7 +314,10 @@ def nih_reporter():
     pass
 
 @nih_reporter.command()
-@click.argument('output_dir', type=click.Path(path_type=UPath))
-def extract(output_dir: UPath):
+@click.argument('output_base', required=False, default=None)
+def extract(output_base: str | None):
     """Extract data from NIH Reporter."""
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / "nih_reporter" / "raw"
     process_all_entities(output_dir)

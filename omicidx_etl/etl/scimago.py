@@ -46,13 +46,12 @@ def scimago():
 
 
 @scimago.command()
-@click.argument("output_dir", type=UPath)
-def extract(output_dir: UPath):
-    """Extract Scimago journal impact factors.
-
-    Args:
-        output_dir: Directory where the output file will be saved
-    """
+@click.argument("output_base", required=False, default=None)
+def extract(output_base: str | None):
+    """Extract Scimago journal impact factors."""
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / "scimago" / "raw"
     logger.info(f"Starting Scimago extraction to {output_dir}")
     fetch_and_save_scimago(output_dir)
 
