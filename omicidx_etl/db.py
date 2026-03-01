@@ -52,12 +52,11 @@ def duckdb_connection(temp_directory: Optional[str] = None):
         with duckdb_connection(temp_directory='/data/tmp') as con:
             con.execute("SELECT * FROM large_table")
     """
-    with duckdb.connect() as con:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            if temp_directory is None:
-                temp_directory = temp_dir
-            else:
-                Path(temp_directory).mkdir(parents=True, exist_ok=True)
+    with duckdb.connect() as con, tempfile.TemporaryDirectory() as temp_dir:
+        if temp_directory is None:
+            temp_directory = temp_dir
+        else:
+            Path(temp_directory).mkdir(parents=True, exist_ok=True)
         sql = duckdb_setup_sql(temp_directory)
         con.execute(sql)
         yield con

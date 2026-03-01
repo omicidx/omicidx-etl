@@ -282,10 +282,10 @@ def extract(output_base: str):
     Fetches biosample data from EBI API and saves to NDJSON format,
     organized by monthly date ranges.
     """
-    from omicidx_etl.path_provider import get_path_provider
-    
-    output_dir = get_path_provider(output_base).ensure_path('raw', 'ebi_biosample')
-    
+    from upath import UPath
+
+    output_dir = UPath(output_base) / 'ebi_biosample' / 'raw'
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Using output directory: {output_dir}")
     anyio.run(main, output_dir)

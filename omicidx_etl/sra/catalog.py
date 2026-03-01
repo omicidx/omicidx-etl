@@ -237,5 +237,6 @@ class SRACatalog:
                     error=str(e),
                     exc_info=True,
                 )
+                raise
         
         progress.complete()
