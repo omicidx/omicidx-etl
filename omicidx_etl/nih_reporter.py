@@ -3,18 +3,16 @@ import zipfile
 import httpx
 import pathlib
 import tempfile
-import logging
 import polars as pl
 import gzip
 from typing import Optional
 from datetime import datetime
-from loguru import logger
 import click
 from upath import UPath
 
-# Use basic logging for now
-logging.basicConfig(level=logging.INFO)
-logging.getLogger('httpx').setLevel(logging.WARNING)
+from omicidx_etl.log import get_logger
+
+logger = get_logger(__name__)
 
 # Configuration constants
 DEFAULT_OUTPUT_DIR = UPath("/tmp/omicidx/nih_reporter")
@@ -124,14 +122,14 @@ def get_basename_for_entity(entity: str, year: Optional[int] = None) -> str:
 # 6. return the new gzip file name
 def fix_encoding(pathlib_path: pathlib.Path) -> pathlib.Path:
     """Fix encoding of a given csv file."""
-    logging.info(f"Fixing encoding for {pathlib_path}")
+    logger.info(f"Fixing encoding for {pathlib_path}")
     tmppath = pathlib.Path(pathlib_path.parent / f"{pathlib_path.name}.tmp")
     with open(tmppath, "wb") as tmp:
         with open(pathlib_path, "rb") as f:
             for line in f:
                 tmp.write(line.decode("utf-8", errors="ignore").encode("utf-8"))
     shutil.copyfile(tmppath, pathlib_path)
-    logging.info(f"Done fixing encoding for {pathlib_path}")
+    logger.info(f"Done fixing encoding for {pathlib_path}")
     # Remove the temporary file
     tmppath.unlink(missing_ok=True)
     return pathlib_path

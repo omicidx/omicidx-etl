@@ -5,21 +5,14 @@ import shutil
 import click
 import httpx
 from upath import UPath
-from dotenv import load_dotenv
-import os
 import gzip
 import tempfile
-from omicidx_etl.path_provider import get_path_provider
 
 from omicidx_etl.log import get_logger
 
 from omicidx_etl.db import duckdb_connection
 
 logger = get_logger(__name__)
-
-load_dotenv(".env")
-print(os.getenv("R2_ACCESS_KEY_ID"))
-print(os.getenv("R2_SECRET_ACCESS_KEY"))
 
 PROJECT_ID = "gap-som-dbmi-sd-app-fq9"
 DATASET_ID = "omicidx"
@@ -136,8 +129,8 @@ def icite():
 @icite.command()
 @click.argument('base_directory', type=click.Path(path_type=UPath))
 def extract(base_directory: UPath):
-    provider = get_path_provider(base_directory)
-    output_dir = provider.ensure_path("icite", "raw")
+    output_dir = base_directory / "icite" / "raw"
+    output_dir.mkdir(parents=True, exist_ok=True)
     icite_flow(output_dir)
     
 if __name__ == "__main__":

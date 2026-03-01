@@ -9,7 +9,10 @@ import shutil
 from upath import UPath
 import pyarrow as pa
 import pyarrow.parquet as pq
-from loguru import logger
+
+from omicidx_etl.log import get_logger
+
+logger = get_logger(__name__)
 
 
 # Module-level constants

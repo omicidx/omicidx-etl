@@ -1,9 +1,11 @@
 import polars as pl
 import re
-from pathlib import Path
 import click
-from loguru import logger
 from upath import UPath
+
+from omicidx_etl.log import get_logger
+
+logger = get_logger(__name__)
 
 
 SCIMAGO_URL = "https://www.scimagojr.com/journalrank.php?out=xls"
