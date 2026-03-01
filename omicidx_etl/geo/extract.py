@@ -17,9 +17,10 @@ from anyio.streams.memory import MemoryObjectSendStream, MemoryObjectReceiveStre
 from omicidx.geo import parser as gp
 from tenacity import retry
 import tenacity
-from loguru import logger
-import logging
-logging.getLogger("httpx").setLevel(logging.WARNING)
+
+from omicidx_etl.log import get_logger
+
+logger = get_logger(__name__)
 
 
 import tempfile

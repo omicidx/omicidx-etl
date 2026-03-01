@@ -10,24 +10,15 @@ import httpx
 import orjson
 from upath import UPath
 import shutil
-from ..config import settings
 import click
-from loguru import logger
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from omicidx_etl.log import get_logger
 
 from .schema import get_biosample_schema
 
-logger.add(
-    "/tmp/file_logs/app_{time}.jsonl",  # Use {time} in filename for unique logs
-    rotation="500 MB",
-    serialize=True,
-    retention="30 days",
-    enqueue=True, # Recommended for thread safety
-    level="DEBUG", # Set the minimum logging level
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
-)
+logger = get_logger(__name__)
 
 
 CONCURRENCY_LIMIT = 4  # Limit to 20 concurrent tasks
