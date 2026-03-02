@@ -17,7 +17,7 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
       AWS_URL_STYLE: ${{ secrets.AWS_URL_STYLE }}
-      OMICIDX_BASE_PATH: ${{ secrets.OMICIDX_BASE_PATH }}
+      PUBLISH_DIRECTORY: ${{ secrets.PUBLISH_DIRECTORY }}
       PYTHONUNBUFFERED: 1
 
     steps:
@@ -45,4 +45,4 @@ jobs:
         run: uv sync
 
       - name: Run PubMed extraction
-        run: uv run oidx pubmed extract s3://$OMICIDX_BASE_PATH
+        run: uv run oidx pubmed extract

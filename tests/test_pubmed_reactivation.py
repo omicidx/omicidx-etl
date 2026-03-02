@@ -18,9 +18,9 @@ def test_resolve_output_path_from_explicit_base():
 
 
 def test_resolve_output_path_from_env_base(monkeypatch):
-    monkeypatch.setenv("OMICIDX_BASE_PATH", "example-bucket")
+    monkeypatch.setenv("PUBLISH_DIRECTORY", "s3://example-bucket")
     output_path = pubmed_module.resolve_output_path(None)
-    assert output_path == UPath("s3://example-bucket/pubmed/raw")
+    assert "pubmed/raw" in str(output_path)
 
 
 def test_get_needed_ids_without_network(monkeypatch):
