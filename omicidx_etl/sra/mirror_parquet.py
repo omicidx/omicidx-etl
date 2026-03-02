@@ -10,6 +10,7 @@ import gzip
 import shutil
 import tempfile
 from typing import Callable, Iterable, Optional
+from xml.etree.ElementTree import ParseError
 
 from loguru import logger
 from upath import UPath
@@ -108,13 +109,22 @@ def process_mirror_entry_to_parquet_parts(
 
     logger.info(f"Processing {url}", entity=entity, chunk_size=CHUNK_SIZE)
 
-    for rec in iter_sra_record_dicts_from_mirror_url(url):
-        if normalize_fn is not None:
-            rec = normalize_fn(rec, schema)
-        buf.append(rec)
+    try:
+        for rec in iter_sra_record_dicts_from_mirror_url(url):
+            if normalize_fn is not None:
+                rec = normalize_fn(rec, schema)
+            buf.append(rec)
 
-        if len(buf) >= CHUNK_SIZE:
-            flush()
+            if len(buf) >= CHUNK_SIZE:
+                flush()
+    except ParseError as e:
+        logger.error(
+            f"XML parse error in {url}: {e}. "
+            f"Flushing {len(buf)} buffered records. "
+            f"Already wrote {len(written)} parts."
+        )
+        flush()
+        raise
 
     flush()
     return written

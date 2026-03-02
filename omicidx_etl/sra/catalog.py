@@ -225,18 +225,29 @@ class SRACatalog:
             log_every=1,  # Log every entry since there are typically few
         )
         
+        failures = []
         for entry in current_batch:
             try:
                 self.process_one(entry)
                 progress.update()
             except Exception as e:
+                failures.append(entry.entity)
                 self.log.error(
-                    "Failed to process entry",
+                    "Failed to process entry — continuing with remaining entities",
                     url=entry.url,
                     entity=entry.entity,
                     error=str(e),
                     exc_info=True,
                 )
-                raise
-        
+
         progress.complete()
+
+        if failures:
+            self.log.error(
+                "Batch completed with failures",
+                failed_entities=failures,
+                total=len(current_batch),
+            )
+            raise RuntimeError(
+                f"Failed to process {len(failures)} entries: {', '.join(failures)}"
+            )
