@@ -51,6 +51,11 @@ def sra():
     default=None,
     help="Limit number of entries to process (useful for testing)",
 )
+@click.option(
+    "--cleanup/--no-cleanup",
+    default=True,
+    help="Clean up old entries after processing (default: on)",
+)
 def extract(
     output_base: Optional[str],
     since: Optional[date],
@@ -58,6 +63,7 @@ def extract(
     entity: str,
     dry_run: bool,
     max_entries: Optional[int],
+    cleanup: bool,
 ):
     """
     Extract SRA metadata from NCBI mirror to parquet format.
@@ -139,10 +145,34 @@ def extract(
         catalog = SRACatalog(dest)
 
         log.info("Processing entries")
-        catalog.process(filtered_entries)
-        
+        process_error = None
+        try:
+            catalog.process(filtered_entries)
+        except RuntimeError as e:
+            # Partial failure — some entities succeeded, some failed.
+            # Continue to cleanup for the ones that succeeded.
+            process_error = e
+            log.warning("Processing had partial failures, continuing to cleanup", error=str(e))
+
+        # Auto-cleanup: remove old data only for entities that completed successfully
+        if cleanup:
+            completed = catalog.get_completed_entities(filtered_entries)
+            if completed:
+                log.info("Running auto-cleanup for completed entities", entities=sorted(completed))
+                catalog.cleanup(filtered_entries, completed_entities=completed)
+            else:
+                log.info("No entities completed successfully, skipping cleanup")
+        else:
+            log.info("Cleanup disabled via --no-cleanup")
+
+        if process_error:
+            raise process_error
+
         log.info("SRA sync completed successfully")
-        
+
+    except RuntimeError:
+        # Already logged above — re-raise without double-logging
+        raise
     except Exception as e:
         log.error("SRA sync failed", error=str(e), exc_info=True)
         raise
