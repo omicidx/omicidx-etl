@@ -120,3 +120,18 @@ copy (
 ) to 'r2://omicidx/biosample/parquet/biosamples.parquet' (format parquet, compression zstd);
 
 select count(*) from read_parquet('r2://omicidx/biosample/parquet/biosamples.parquet');
+
+--------
+--
+-- PubMed Parquet Files
+--
+--------
+
+copy (
+    select *
+    from read_parquet('r2://omicidx/pubmed/raw/*.parquet')
+    where delete is not true
+    order by pmid
+) to 'r2://omicidx/pubmed/parquet/pubmed_articles.parquet' (format parquet, compression zstd);
+
+select count(*) from read_parquet('r2://omicidx/pubmed/parquet/pubmed_articles.parquet');
