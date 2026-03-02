@@ -10,24 +10,15 @@ import httpx
 import orjson
 from upath import UPath
 import shutil
-from ..config import settings
 import click
-from loguru import logger
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from omicidx_etl.log import get_logger
 
 from .schema import get_biosample_schema
 
-logger.add(
-    "/tmp/file_logs/app_{time}.jsonl",  # Use {time} in filename for unique logs
-    rotation="500 MB",
-    serialize=True,
-    retention="30 days",
-    enqueue=True, # Recommended for thread safety
-    level="DEBUG", # Set the minimum logging level
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
-)
+logger = get_logger(__name__)
 
 
 CONCURRENCY_LIMIT = 4  # Limit to 20 concurrent tasks
@@ -272,20 +263,17 @@ def ebi_biosample():
     pass
 
 @ebi_biosample.command()
-@click.argument(
-    "output_base",
-    type = str,
-)
-def extract(output_base: str):
+@click.argument("output_base", required=False, default=None)
+def extract(output_base: str | None):
     """Extract EBI Biosample data.
 
-    Fetches biosample data from EBI API and saves to NDJSON format,
-    organized by monthly date ranges.
+    Fetches biosample data from EBI API and saves to Parquet format,
+    organized by daily date ranges.
     """
-    from omicidx_etl.path_provider import get_path_provider
-    
-    output_dir = get_path_provider(output_base).ensure_path('raw', 'ebi_biosample')
-    
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / 'ebi_biosample' / 'raw'
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"Using output directory: {output_dir}")
     anyio.run(main, output_dir)

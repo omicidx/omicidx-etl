@@ -21,14 +21,7 @@ def sra():
 
 
 @sra.command()
-@click.option(
-    "--dest",
-    type=str,
-    envvar="OMICIDX_SRA_DEST",
-    required=False,
-    default=None,
-    help="Output destination (e.g., s3://bucket/sra or /local/path/sra). Can be set via OMICIDX_SRA_DEST env var.",
-)
+@click.argument("output_base", required=False, default=None)
 @click.option(
     "--since",
     type=click.DateTime(formats=["%Y-%m-%d"]),
@@ -59,7 +52,7 @@ def sra():
     help="Limit number of entries to process (useful for testing)",
 )
 def extract(
-    dest: Optional[str],
+    output_base: Optional[str],
     since: Optional[date],
     until: Optional[date],
     entity: str,
@@ -71,14 +64,12 @@ def extract(
 
     Downloads and processes the latest SRA mirror, filtering by date and entity type.
     """
+    from omicidx_etl.config import settings
+    from upath import UPath
+
     log = get_logger(__name__)
-    
-    # Require dest parameter
-    if dest is None:
-        raise click.UsageError(
-            "The --dest option is required. "
-            "Provide a destination like: s3://omicidx/sra/raw or /local/path/sra/raw"
-        )
+    base = UPath(output_base) if output_base else settings.publish_directory
+    dest = str(base / "sra" / "raw")
 
     try:
         log.info(
@@ -158,33 +149,24 @@ def extract(
 
 
 @sra.command()
-@click.option(
-    "--dest",
-    type=str,
-    envvar="OMICIDX_SRA_DEST",
-    required=False,
-    default=None,
-    help="Output destination (e.g., s3://bucket/sra or /local/path/sra). Can be set via OMICIDX_SRA_DEST env var.",
-)
+@click.argument("output_base", required=False, default=None)
 @click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be cleaned up without deleting",
 )
-def cleanup(dest: Optional[str], dry_run: bool):
+def cleanup(output_base: Optional[str], dry_run: bool):
     """
     Clean up old SRA mirror entries.
 
     Removes all entries that are no longer in the current batch.
     """
-    log = get_logger(__name__)
+    from omicidx_etl.config import settings
+    from upath import UPath
 
-    # Require dest parameter
-    if dest is None:
-        raise click.UsageError(
-            "The --dest option is required. "
-            "Provide a destination like: s3://omicidx/sra/raw or /local/path/sra/raw"
-        )
+    log = get_logger(__name__)
+    base = UPath(output_base) if output_base else settings.publish_directory
+    dest = str(base / "sra" / "raw")
 
     try:
         log.info("Starting SRA cleanup", dest=dest, dry_run=dry_run)

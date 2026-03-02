@@ -3,18 +3,16 @@ import zipfile
 import httpx
 import pathlib
 import tempfile
-import logging
 import polars as pl
 import gzip
 from typing import Optional
 from datetime import datetime
-from loguru import logger
 import click
 from upath import UPath
 
-# Use basic logging for now
-logging.basicConfig(level=logging.INFO)
-logging.getLogger('httpx').setLevel(logging.WARNING)
+from omicidx_etl.log import get_logger
+
+logger = get_logger(__name__)
 
 # Configuration constants
 DEFAULT_OUTPUT_DIR = UPath("/tmp/omicidx/nih_reporter")
@@ -124,14 +122,14 @@ def get_basename_for_entity(entity: str, year: Optional[int] = None) -> str:
 # 6. return the new gzip file name
 def fix_encoding(pathlib_path: pathlib.Path) -> pathlib.Path:
     """Fix encoding of a given csv file."""
-    logging.info(f"Fixing encoding for {pathlib_path}")
+    logger.info(f"Fixing encoding for {pathlib_path}")
     tmppath = pathlib.Path(pathlib_path.parent / f"{pathlib_path.name}.tmp")
     with open(tmppath, "wb") as tmp:
         with open(pathlib_path, "rb") as f:
             for line in f:
                 tmp.write(line.decode("utf-8", errors="ignore").encode("utf-8"))
     shutil.copyfile(tmppath, pathlib_path)
-    logging.info(f"Done fixing encoding for {pathlib_path}")
+    logger.info(f"Done fixing encoding for {pathlib_path}")
     # Remove the temporary file
     tmppath.unlink(missing_ok=True)
     return pathlib_path
@@ -316,7 +314,10 @@ def nih_reporter():
     pass
 
 @nih_reporter.command()
-@click.argument('output_dir', type=click.Path(path_type=UPath))
-def extract(output_dir: UPath):
+@click.argument('output_base', required=False, default=None)
+def extract(output_base: str | None):
     """Extract data from NIH Reporter."""
+    from omicidx_etl.config import settings
+    base = UPath(output_base) if output_base else settings.publish_directory
+    output_dir = base / "nih_reporter" / "raw"
     process_all_entities(output_dir)

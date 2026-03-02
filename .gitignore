@@ -16,3 +16,4 @@ exports/
 logs/
 *parquet
 .env.minio
+SRAmetadb.sqlite.gz
