@@ -18,11 +18,11 @@ cd "$ETL_DIR"
 uv run oidx sql run || exit_code=$?
 
 # Step 2: Build DuckDB views and upload (only if step 1 succeeded)
-if [ "$exit_code" -eq 0 ]; then
-    echo "=== Step 2: DuckDB build + upload (omicidx) ==="
-    cd "$OMICIDX_DIR"
-    uv run build_db.py --upload || exit_code=$?
-fi
+#if [ "$exit_code" -eq 0 ]; then
+#    echo "=== Step 2: DuckDB build + upload (omicidx) ==="
+#    cd "$OMICIDX_DIR"
+#    uv run build_db.py --upload || exit_code=$?
+#fi
 
 end_time=$(date +%s)
 duration=$(( end_time - start_time ))
