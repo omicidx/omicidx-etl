@@ -117,16 +117,29 @@ class SRACatalog:
             except Exception:
                 pass
     
-    def cleanup(self, mirror_entries: List[SRAMirrorEntry]) -> None:
+    def get_completed_entities(self, mirror_entries: List[SRAMirrorEntry]) -> set[str]:
+        """Return entity names whose current-batch Full entry has a done marker."""
+        completed = set()
+        for entry in mirror_entries:
+            if entry.in_current_batch and entry.is_full:
+                if self._done_marker_path(entry).exists():
+                    completed.add(entry.entity)
+        return completed
+
+    def cleanup(self, mirror_entries: List[SRAMirrorEntry], completed_entities: set[str] | None = None) -> None:
         """
         Clean up the catalog by removing old files.
-        
-        Only removes entries that are not in the current batch.
-        
+
+        Only removes entries that are not in the current batch. If completed_entities
+        is provided, only removes entries whose entity is in that set (safety filter).
+
         Args:
             mirror_entries: List of all mirror entries
+            completed_entities: If provided, only clean up entities in this set
         """
         to_cleanup = [e for e in mirror_entries if not e.in_current_batch]
+        if completed_entities is not None:
+            to_cleanup = [e for e in to_cleanup if e.entity in completed_entities]
         
         self.log.info(
             "Starting cleanup",
