@@ -1,4 +1,8 @@
-"""SQL files for DuckDB ETL transformations.
+"""SQL files for DuckDB ETL transformations and view definitions.
+
+Two groups of SQL files:
+  - 010_*: Consolidation (raw -> parquet on R2, run via `oidx sql run`)
+  - 020_*-050_*: View definitions (parquet -> DuckDB views, run via `oidx build-db`)
 
 Usage:
     from omicidx_etl.sql import get_sql, list_sql_files, SQL_DIR
