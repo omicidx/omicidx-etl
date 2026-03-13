@@ -16,6 +16,7 @@ from omicidx_etl.geo.extract import geo
 from omicidx_etl.nih_reporter import nih_reporter
 from omicidx_etl.sra.cli import sra
 from omicidx_etl.sql.runner import sql
+from omicidx_etl.build_db import build_db
 
 
 @click.group()
@@ -34,6 +35,7 @@ cli.add_command(geo)
 cli.add_command(nih_reporter)
 cli.add_command(sra)
 cli.add_command(sql)
+cli.add_command(build_db)
 
 if __name__ == "__main__":
     cli()

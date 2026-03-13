@@ -1,8 +1,10 @@
 """Run raw-to-parquet SQL consolidation using DuckDB.
 
 This module consolidates raw extracted data (ndjson, csv, parquet shards)
-into single parquet files on R2. The user-facing SQL views and DuckDB
-database are built in the omicidx/omicidx repo.
+into single parquet files on R2. Only runs consolidation files (010_*).
+
+For building the user-facing DuckDB database (views 020-050), use:
+    uv run oidx build-db
 
 Usage (CLI):
     # Run parquet consolidation
@@ -96,7 +98,13 @@ def run_cmd(files: tuple[str, ...]):
     """
     con = get_connection()
 
-    sql_files = list(files) if files else list_sql_files()
+    # Default to consolidation files only (010_*); view files (020+) are
+    # handled by the build-db command.
+    sql_files = (
+        list(files)
+        if files
+        else [f for f in list_sql_files() if f < "020"]
+    )
     for name in sql_files:
         run_sql_file(name, con=con)
 
