@@ -40,33 +40,73 @@ function htmlListing(
   directories: string[],
   files: { key: string; size: number; lastModified: string }[],
 ): Response {
-  const title = prefix ? `Index of /${prefix}` : "OmicIDX Data";
-  const parentLink = prefix
-    ? `<a href="/${prefix.replace(/[^/]+\/$/, "")}">../</a>\n`
+  const title = prefix ? `/${prefix}` : "OmicIDX Data";
+  const isRoot = !prefix;
+
+  const breadcrumbs = buildBreadcrumbs(prefix);
+
+  const parentRow = prefix
+    ? `<tr><td><a href="/${prefix.replace(/[^/]+\/$/, "")}">../</a></td><td></td><td></td></tr>`
     : "";
 
-  const dirLinks = directories
-    .map((d) => `<a href="/${d}">${d.replace(prefix, "")}</a>`)
-    .join("\n");
-
-  const fileLinks = files
-    .map((f) => {
-      const name = f.key.replace(prefix, "");
-      const size = formatBytes(f.size);
-      const date = f.lastModified.slice(0, 10);
-      return `<a href="/${f.key}">${name}</a>  ${size.padStart(10)}  ${date}`;
+  const dirRows = directories
+    .map((d) => {
+      const name = d.replace(prefix, "");
+      return `<tr><td><a href="/${d}">${name}</a></td><td>&mdash;</td><td>&mdash;</td></tr>`;
     })
     .join("\n");
 
+  const fileRows = files
+    .map((f) => {
+      const name = f.key.replace(prefix, "");
+      return `<tr><td><a href="/${f.key}">${name}</a></td><td>${formatBytes(f.size)}</td><td>${f.lastModified.slice(0, 10)}</td></tr>`;
+    })
+    .join("\n");
+
+  const hero = isRoot
+    ? `<header>
+        <h1>OmicIDX Data</h1>
+        <p>Public genomics metadata from NCBI, available as analysis-ready Parquet and NDJSON files.
+           Query directly with <a href="https://duckdb.org/">DuckDB</a>, <a href="https://pola.rs/">Polars</a>,
+           or <a href="https://arrow.apache.org/docs/python/">PyArrow</a>.</p>
+        <p><strong>Example:</strong></p>
+        <pre><code>SELECT * FROM read_parquet('https://data.omicidx.org/sra/parquet/study.parquet') LIMIT 10;</code></pre>
+      </header>`
+    : `<header><h1>${title}</h1></header>`;
+
   const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>${title}</title></head>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${isRoot ? "OmicIDX Data" : `OmicIDX \u2014 ${title}`}</title>
+  <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+  <style>
+    nav { font-size: 0.9rem; }
+    table { width: 100%; }
+    td:nth-child(2), td:nth-child(3) { text-align: right; white-space: nowrap; width: 1%; }
+    pre code { font-size: 0.85rem; }
+    footer { font-size: 0.85rem; }
+  </style>
+</head>
 <body>
-<h1>${title}</h1>
-<pre>
-${parentLink}${dirLinks}
-${fileLinks}
-</pre>
+  <nav>${breadcrumbs}</nav>
+  <main>
+    ${hero}
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Size</th><th>Modified</th></tr>
+      </thead>
+      <tbody>
+        ${parentRow}
+        ${dirRows}
+        ${fileRows}
+      </tbody>
+    </table>
+  </main>
+  <footer>
+    <p><a href="https://github.com/omicidx">OmicIDX</a> &mdash; Open genomics metadata infrastructure</p>
+  </footer>
 </body>
 </html>`;
 
@@ -76,6 +116,17 @@ ${fileLinks}
       "access-control-allow-origin": "*",
     },
   });
+}
+
+function buildBreadcrumbs(prefix: string): string {
+  const parts = prefix.split("/").filter(Boolean);
+  let path = "";
+  const crumbs = [`<a href="/">Home</a>`];
+  for (const part of parts) {
+    path += part + "/";
+    crumbs.push(`<a href="/${path}">${part}</a>`);
+  }
+  return crumbs.join(" / ");
 }
 
 function formatBytes(bytes: number): string {
