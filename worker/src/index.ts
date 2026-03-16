@@ -16,10 +16,24 @@ function contentType(key: string): string {
   return "application/octet-stream";
 }
 
+/** Parse an HTTP Range header into an R2Range. */
+function parseRange(
+  header: string,
+  totalSize: number,
+): R2Range | undefined {
+  const match = header.match(/^bytes=(\d+)-(\d*)$/);
+  if (!match) return undefined;
+  const start = parseInt(match[1], 10);
+  const end = match[2] ? parseInt(match[2], 10) : totalSize - 1;
+  return { offset: start, length: end - start + 1 };
+}
+
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, HEAD, OPTIONS",
   "access-control-allow-headers": "*",
+  "access-control-expose-headers":
+    "Content-Length, Content-Range, Accept-Ranges, ETag",
 };
 
 export default {
@@ -44,50 +58,88 @@ export default {
       const acceptsHtml =
         request.headers.get("accept")?.includes("text/html") ?? false;
       const response = await listDirectory(env.DATA_BUCKET, key, acceptsHtml);
-      ctx.waitUntil(logUsage(env, request, key || "/", response.status));
+      ctx.waitUntil(logUsage(env, request, key || "/", response.status, 0));
       return response;
     }
 
-    // Serve object from R2
-    const object = await env.DATA_BUCKET.get(key, {
-      onlyIf: request.headers,
-    });
+    // Check if this is a range request — we need the object size first
+    // to parse the range, so do a head-style get first if range is present.
+    const rangeHeader = request.headers.get("range");
+
+    // Build R2GetOptions
+    const options: R2GetOptions = { onlyIf: request.headers };
+
+    if (rangeHeader) {
+      // We need total size to resolve open-ended ranges. Use a HEAD first
+      // only if necessary (open-ended range like "bytes=8192-").
+      // For simplicity, always get the object head to know total size.
+      const head = await env.DATA_BUCKET.head(key);
+      if (head === null) {
+        ctx.waitUntil(logUsage(env, request, key, 404, 0));
+        return new Response("Not found", {
+          status: 404,
+          headers: CORS_HEADERS,
+        });
+      }
+      const range = parseRange(rangeHeader, head.size);
+      if (range) {
+        options.range = range;
+      }
+    }
+
+    const object = await env.DATA_BUCKET.get(key, options);
 
     if (object === null) {
-      ctx.waitUntil(logUsage(env, request, key, 404));
+      ctx.waitUntil(logUsage(env, request, key, 404, 0));
       return new Response("Not found", {
         status: 404,
         headers: CORS_HEADERS,
       });
     }
 
-    // R2 returns R2ObjectBody (has body) or R2Object (conditional 304)
+    // R2 may return R2Object (no body, conditional 304) when onlyIf fails
     if (!("body" in object)) {
-      ctx.waitUntil(logUsage(env, request, key, 304));
+      const obj = object as R2Object;
+      ctx.waitUntil(logUsage(env, request, key, 304, 0));
       return new Response(null, {
         status: 304,
         headers: {
-          etag: object.httpEtag,
+          etag: obj.httpEtag,
           ...CORS_HEADERS,
         },
       });
     }
 
+    const isRangeResponse = rangeHeader && options.range;
+    const bodySize = (object.range && "length" in object.range)
+      ? object.range.length
+      : object.size;
+    const status = isRangeResponse ? 206 : 200;
+
     const headers = new Headers({
       "content-type": contentType(key),
       etag: object.httpEtag,
+      "accept-ranges": "bytes",
       "cache-control": "public, max-age=86400",
       ...CORS_HEADERS,
     });
 
-    if (object.size !== undefined) {
-      headers.set("content-length", object.size.toString());
+    if (bodySize !== undefined) {
+      headers.set("content-length", bodySize.toString());
     }
 
-    ctx.waitUntil(logUsage(env, request, key, 200));
+    if (isRangeResponse && options.range) {
+      const r = options.range as { offset: number; length: number };
+      headers.set(
+        "content-range",
+        `bytes ${r.offset}-${r.offset + r.length - 1}/${object.size}`,
+      );
+    }
+
+    ctx.waitUntil(logUsage(env, request, key, status, bodySize ?? 0));
 
     return new Response(request.method === "HEAD" ? null : object.body, {
-      status: 200,
+      status,
       headers,
     });
   },

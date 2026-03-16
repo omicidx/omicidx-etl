@@ -17,11 +17,24 @@ async function hashIp(ip: string): Promise<string> {
  * Log a usage data point to the Analytics Engine dataset.
  * Designed to be called via ctx.waitUntil() so it never blocks the response.
  */
+/**
+ * Log a usage data point to the Analytics Engine dataset.
+ * Designed to be called via ctx.waitUntil() so it never blocks the response.
+ *
+ * Schema:
+ *   blob1  = object key (path)
+ *   blob2  = user-agent
+ *   blob3  = hashed client IP
+ *   blob4  = HTTP method
+ *   double1 = status code
+ *   double2 = bytes transferred
+ */
 export async function logUsage(
   env: Env,
   request: Request,
   objectKey: string,
   statusCode: number,
+  bytesTransferred: number,
 ): Promise<void> {
   const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
   const hashedIp = await hashIp(ip);
@@ -30,6 +43,6 @@ export async function logUsage(
   env.USAGE.writeDataPoint({
     indexes: [objectKey],
     blobs: [objectKey, userAgent, hashedIp, request.method],
-    doubles: [statusCode, Date.now()],
+    doubles: [statusCode, bytesTransferred],
   });
 }
