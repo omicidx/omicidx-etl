@@ -154,12 +154,14 @@ def extract(
             process_error = e
             log.warning("Processing had partial failures, continuing to cleanup", error=str(e))
 
-        # Auto-cleanup: remove old data only for entities that completed successfully
+        # Auto-cleanup: remove old data only for entities that completed successfully.
+        # Pass all_entries (not filtered_entries) so the filesystem-based cleanup
+        # knows which directories belong to the current batch across all entities.
         if cleanup:
-            completed = catalog.get_completed_entities(filtered_entries)
+            completed = catalog.get_completed_entities(all_entries)
             if completed:
                 log.info("Running auto-cleanup for completed entities", entities=sorted(completed))
-                catalog.cleanup(filtered_entries, completed_entities=completed)
+                catalog.cleanup(all_entries, completed_entities=completed)
             else:
                 log.info("No entities completed successfully, skipping cleanup")
         else:
