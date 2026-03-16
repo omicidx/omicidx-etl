@@ -26,6 +26,7 @@ async function hashIp(ip: string): Promise<string> {
  *   blob2  = user-agent
  *   blob3  = hashed client IP
  *   blob4  = HTTP method
+ *   blob5  = client IP (for geolocation)
  *   double1 = status code
  *   double2 = bytes transferred
  */
@@ -42,7 +43,7 @@ export async function logUsage(
 
   env.USAGE.writeDataPoint({
     indexes: [objectKey],
-    blobs: [objectKey, userAgent, hashedIp, request.method],
+    blobs: [objectKey, userAgent, hashedIp, request.method, ip],
     doubles: [statusCode, bytesTransferred],
   });
 }
