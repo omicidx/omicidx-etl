@@ -17,3 +17,7 @@ logs/
 *parquet
 .env.minio
 SRAmetadb.sqlite.gz
+
+# Cloudflare Worker
+worker/node_modules/
+worker/.wrangler/

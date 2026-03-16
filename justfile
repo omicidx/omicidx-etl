@@ -41,3 +41,13 @@ pubmed-extract:
 # oidx commands
 [group('oidx')]
 extract-all: geo-extract biosample-extract europepmc-extract pubmed-extract
+
+# Run the data worker locally (requires wrangler login)
+[group('worker')]
+worker-dev:
+    cd worker && npx wrangler dev --remote
+
+# Deploy the data worker to Cloudflare
+[group('worker')]
+worker-deploy:
+    cd worker && npx wrangler deploy
