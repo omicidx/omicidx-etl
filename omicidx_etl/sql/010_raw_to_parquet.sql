@@ -14,6 +14,7 @@ copy (
 select count(*) from read_parquet('r2://omicidx/geo/parquet/geo_series_with_rnaseq_counts.parquet');
 
 copy (
+with deduped as (
     select
         trim(title) as title,
         trim(status) as status,
@@ -31,15 +32,22 @@ copy (
         data_row_count,
         contributor,
         relation,
-        trim(manufacture_protocol) as manufacture_protocol
+        trim(manufacture_protocol) as manufacture_protocol,
+        row_number() over (
+            partition by trim(accession)
+            order by last_update_date desc
+        ) as rn
     from read_ndjson_auto('r2://omicidx/geo/raw/gpl/**/*.ndjson.gz')
-    order by accession
+)
+SELECT * from deduped
+where rn = 1
+order by accession
+
 ) to 'r2://omicidx/geo/parquet/geo_platforms.parquet' (format parquet, compression zstd);
 
 
-select count(*) from read_parquet('r2://omicidx/geo/parquet/geo_platforms.parquet');
-
 copy (
+with deduped as (
     select
         trim(title) as title,
         trim(status) as status,
@@ -62,15 +70,21 @@ copy (
         platform_organism,
         supplemental_files,
         trim(overall_design) as overall_design,
-        contributor
+        contributor,
+        row_number() over (
+            partition by trim(accession)
+            order by last_update_date desc
+        ) as rn
     from read_ndjson_auto('r2://omicidx/geo/raw/gse/**/*.ndjson.gz')
-    order by accession
+)
+SELECT * from deduped
+where rn = 1
+order by accession
 ) to 'r2://omicidx/geo/parquet/geo_series.parquet' (format parquet, compression zstd);
 
 
-select count(*) from read_parquet('r2://omicidx/geo/parquet/geo_series.parquet');
-
 copy (
+with deduped as (
     select
         trim(title) as title,
         trim(status) as status,
@@ -94,13 +108,18 @@ copy (
         trim(data_processing) as data_processing,
         supplemental_files,
         channels,
-        contributor
+        contributor,
+        row_number() over (
+            partition by trim(accession)
+            order by last_update_date desc
+        ) as rn
     from read_ndjson_auto('r2://omicidx/geo/raw/gsm/**/*.ndjson.gz')
-    order by accession
+)
+SELECT * from deduped
+where rn = 1
+order by accession
 ) to 'r2://omicidx/geo/parquet/geo_samples.parquet' (format parquet, compression zstd);
 
-
-select count(*) from read_parquet('r2://omicidx/geo/parquet/geo_samples.parquet');
 
 --------
 --
