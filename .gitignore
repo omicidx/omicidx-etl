@@ -21,3 +21,11 @@ SRAmetadb.sqlite.gz
 # Cloudflare Worker
 worker/node_modules/
 worker/.wrangler/
+
+# Scratch / temp data
+pmc_text_tmp/
+render/
+Untitled-*.ipynb
+old_sradb_sqlite_schema.sql
+omicidx.metadata.json
+targz_to_parquet.sh
